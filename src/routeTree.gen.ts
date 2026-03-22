@@ -25,6 +25,7 @@ import { Route as AuthenticatedInvoicesInvoiceIdRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminVatRatesRouteImport } from './routes/_authenticated/admin/vat-rates'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminTransportersRouteImport } from './routes/_authenticated/admin/transporters'
+import { Route as AuthenticatedAdminTradingCompaniesRouteImport } from './routes/_authenticated/admin/trading-companies'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
 import { Route as AuthenticatedAdminRepsRouteImport } from './routes/_authenticated/admin/reps'
 import { Route as AuthenticatedAdminRearersRouteImport } from './routes/_authenticated/admin/rearers'
@@ -117,6 +118,12 @@ const AuthenticatedAdminTransportersRoute =
     path: '/transporters',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminTradingCompaniesRoute =
+  AuthenticatedAdminTradingCompaniesRouteImport.update({
+    id: '/trading-companies',
+    path: '/trading-companies',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminSettingsRoute =
   AuthenticatedAdminSettingsRouteImport.update({
     id: '/settings',
@@ -167,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/admin/rearers': typeof AuthenticatedAdminRearersRoute
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/trading-companies': typeof AuthenticatedAdminTradingCompaniesRoute
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
@@ -190,6 +198,7 @@ export interface FileRoutesByTo {
   '/admin/rearers': typeof AuthenticatedAdminRearersRoute
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/trading-companies': typeof AuthenticatedAdminTradingCompaniesRoute
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
@@ -215,6 +224,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/rearers': typeof AuthenticatedAdminRearersRoute
   '/_authenticated/admin/reps': typeof AuthenticatedAdminRepsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/_authenticated/admin/trading-companies': typeof AuthenticatedAdminTradingCompaniesRoute
   '/_authenticated/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/admin/rearers'
     | '/admin/reps'
     | '/admin/settings'
+    | '/admin/trading-companies'
     | '/admin/transporters'
     | '/admin/users'
     | '/admin/vat-rates'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/admin/rearers'
     | '/admin/reps'
     | '/admin/settings'
+    | '/admin/trading-companies'
     | '/admin/transporters'
     | '/admin/users'
     | '/admin/vat-rates'
@@ -287,6 +299,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/rearers'
     | '/_authenticated/admin/reps'
     | '/_authenticated/admin/settings'
+    | '/_authenticated/admin/trading-companies'
     | '/_authenticated/admin/transporters'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/vat-rates'
@@ -420,6 +433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTransportersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/trading-companies': {
+      id: '/_authenticated/admin/trading-companies'
+      path: '/trading-companies'
+      fullPath: '/admin/trading-companies'
+      preLoaderRoute: typeof AuthenticatedAdminTradingCompaniesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/settings': {
       id: '/_authenticated/admin/settings'
       path: '/settings'
@@ -472,6 +492,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminRearersRoute: typeof AuthenticatedAdminRearersRoute
   AuthenticatedAdminRepsRoute: typeof AuthenticatedAdminRepsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
+  AuthenticatedAdminTradingCompaniesRoute: typeof AuthenticatedAdminTradingCompaniesRoute
   AuthenticatedAdminTransportersRoute: typeof AuthenticatedAdminTransportersRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminVatRatesRoute: typeof AuthenticatedAdminVatRatesRoute
@@ -484,6 +505,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminRearersRoute: AuthenticatedAdminRearersRoute,
   AuthenticatedAdminRepsRoute: AuthenticatedAdminRepsRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
+  AuthenticatedAdminTradingCompaniesRoute:
+    AuthenticatedAdminTradingCompaniesRoute,
   AuthenticatedAdminTransportersRoute: AuthenticatedAdminTransportersRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminVatRatesRoute: AuthenticatedAdminVatRatesRoute,

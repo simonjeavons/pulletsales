@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
@@ -70,11 +70,15 @@ function InvoicesPage() {
     },
   });
 
+  const navTo = useNavigate();
+
   const adHocMut = useMutation({
     mutationFn: createAdHocInvoiceFn,
-    onSuccess: () => {
+    onSuccess: (invoice: any) => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       setShowAdHocModal(false);
+      // Navigate to the new invoice detail page
+      navTo({ to: `/invoices/${invoice.id}` });
     },
   });
 

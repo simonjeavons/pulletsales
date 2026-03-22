@@ -43,26 +43,33 @@ function OrderCreatePage() {
   const [breeds, setBreeds] = useState<any[]>([]);
   const [extras, setExtras] = useState<any[]>([]);
   const [rearers, setRearers] = useState<any[]>([]);
+  const [tradingCompanies, setTradingCompanies] = useState<any[]>([]);
 
   useEffect(() => {
     async function load() {
-      const [c, r, b, e, re] = await Promise.all([
+      const [c, r, b, e, re, tc] = await Promise.all([
         supabase.from("customers").select("id, company_name, customer_unique_id, rep_id").eq("is_active", true).order("company_name"),
         supabase.from("reps").select("id, name").eq("is_active", true).order("name"),
         supabase.from("breeds").select("id, breed_name").eq("is_available", true).order("breed_name"),
         supabase.from("extras").select("id, name").eq("is_available", true).order("name"),
         supabase.from("rearers").select("id, name").eq("is_active", true).order("name"),
+        supabase.from("trading_companies").select("id, code, name, is_default").eq("is_active", true).order("code"),
       ]);
       setCustomers(c.data ?? []);
       setReps(r.data ?? []);
       setBreeds(b.data ?? []);
       setExtras(e.data ?? []);
       setRearers(re.data ?? []);
+      setTradingCompanies(tc.data ?? []);
+      // Set default trading company
+      const defaultTc = (tc.data ?? []).find((t: any) => t.is_default);
+      if (defaultTc) setTradingCompanyId(defaultTc.id);
     }
     load();
   }, []);
 
   // ─── Form state ──────────────────────────────────────
+  const [tradingCompanyId, setTradingCompanyId] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [deliveryAddressId, setDeliveryAddressId] = useState("");
   const [repId, setRepId] = useState("");
@@ -192,6 +199,22 @@ function OrderCreatePage() {
         {/* ─── Context Bar ─────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Details</h2>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <FormField label="Trading Company">
+              <select
+                value={tradingCompanyId}
+                onChange={(e) => setTradingCompanyId(e.target.value)}
+                className={selectClasses}
+              >
+                <option value="">— Select —</option>
+                {tradingCompanies.map((tc) => (
+                  <option key={tc.id} value={tc.id}>
+                    {tc.code} — {tc.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Customer" required>
               <select

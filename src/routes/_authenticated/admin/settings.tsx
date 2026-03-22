@@ -18,7 +18,8 @@ interface Setting {
 
 const settingGroups = [
   {
-    title: "Order Numbering",
+    title: "Numbering Sequences",
+    description: "Next numbers to be assigned automatically.",
     settings: [
       { key: "next_order_number", label: "Next Order Number", type: "number" },
       { key: "next_despatch_number", label: "Next Despatch Number", type: "number" },
@@ -26,26 +27,11 @@ const settingGroups = [
     ],
   },
   {
-    title: "TAS Export",
+    title: "TAS Export Defaults",
+    description: "Default values used when generating TAS CSV exports.",
     settings: [
       { key: "tas_nominal", label: "Default Nominal Code", type: "text" },
       { key: "tas_depot", label: "Default Depot Code", type: "text" },
-      { key: "trading_company", label: "Trading Company Code", type: "text" },
-    ],
-  },
-  {
-    title: "Invoice Settings",
-    settings: [
-      { key: "vat_registration", label: "VAT Registration Number", type: "text" },
-      { key: "payment_terms_days", label: "Payment Terms (days)", type: "number" },
-    ],
-  },
-  {
-    title: "Bank Details",
-    settings: [
-      { key: "bank_name", label: "Bank Name", type: "text" },
-      { key: "bank_sort_code", label: "Sort Code", type: "text" },
-      { key: "bank_account_no", label: "Account Number", type: "text" },
     ],
   },
 ];
@@ -117,7 +103,8 @@ function SettingsPage() {
       <div className="space-y-6 max-w-2xl">
         {settingGroups.map((group) => (
           <div key={group.title} className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">{group.title}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">{group.title}</h3>
+            {(group as any).description && <p className="text-sm text-gray-500 mb-4">{(group as any).description}</p>}
             <div className="space-y-4">
               {group.settings.map((s) => (
                 <FormField key={s.key} label={s.label}>
