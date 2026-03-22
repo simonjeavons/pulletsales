@@ -24,6 +24,7 @@ import { Route as AuthenticatedOrdersOrderIdRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminVatRatesRouteImport } from './routes/_authenticated/admin/vat-rates'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminTransportersRouteImport } from './routes/_authenticated/admin/transporters'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
 import { Route as AuthenticatedAdminRepsRouteImport } from './routes/_authenticated/admin/reps'
 import { Route as AuthenticatedAdminRearersRouteImport } from './routes/_authenticated/admin/rearers'
 import { Route as AuthenticatedAdminExtrasRouteImport } from './routes/_authenticated/admin/extras'
@@ -108,6 +109,12 @@ const AuthenticatedAdminTransportersRoute =
     path: '/transporters',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminRepsRoute = AuthenticatedAdminRepsRouteImport.update({
   id: '/reps',
   path: '/reps',
@@ -152,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/admin/extras': typeof AuthenticatedAdminExtrasRoute
   '/admin/rearers': typeof AuthenticatedAdminRearersRoute
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
@@ -173,6 +181,7 @@ export interface FileRoutesByTo {
   '/admin/extras': typeof AuthenticatedAdminExtrasRoute
   '/admin/rearers': typeof AuthenticatedAdminRearersRoute
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
@@ -196,6 +205,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/extras': typeof AuthenticatedAdminExtrasRoute
   '/_authenticated/admin/rearers': typeof AuthenticatedAdminRearersRoute
   '/_authenticated/admin/reps': typeof AuthenticatedAdminRepsRoute
+  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/admin/extras'
     | '/admin/rearers'
     | '/admin/reps'
+    | '/admin/settings'
     | '/admin/transporters'
     | '/admin/users'
     | '/admin/vat-rates'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/admin/extras'
     | '/admin/rearers'
     | '/admin/reps'
+    | '/admin/settings'
     | '/admin/transporters'
     | '/admin/users'
     | '/admin/vat-rates'
@@ -262,6 +274,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/extras'
     | '/_authenticated/admin/rearers'
     | '/_authenticated/admin/reps'
+    | '/_authenticated/admin/settings'
     | '/_authenticated/admin/transporters'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/vat-rates'
@@ -386,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTransportersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/reps': {
       id: '/_authenticated/admin/reps'
       path: '/reps'
@@ -430,6 +450,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminExtrasRoute: typeof AuthenticatedAdminExtrasRoute
   AuthenticatedAdminRearersRoute: typeof AuthenticatedAdminRearersRoute
   AuthenticatedAdminRepsRoute: typeof AuthenticatedAdminRepsRoute
+  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminTransportersRoute: typeof AuthenticatedAdminTransportersRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminVatRatesRoute: typeof AuthenticatedAdminVatRatesRoute
@@ -441,6 +462,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminExtrasRoute: AuthenticatedAdminExtrasRoute,
   AuthenticatedAdminRearersRoute: AuthenticatedAdminRearersRoute,
   AuthenticatedAdminRepsRoute: AuthenticatedAdminRepsRoute,
+  AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminTransportersRoute: AuthenticatedAdminTransportersRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminVatRatesRoute: AuthenticatedAdminVatRatesRoute,

@@ -26,14 +26,25 @@ export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
 
 // ─── Generate order number ───────────────────────────────
 async function nextOrderNumber(): Promise<string> {
-  const { data: raw } = await admin()
-    .from("orders")
-    .select("order_number")
-    .order("created_at", { ascending: false })
-    .limit(1);
-  const last = raw?.[0]?.order_number;
-  const num = last ? parseInt(last.replace("ORD-", ""), 10) + 1 : 1001;
-  return `ORD-${num}`;
+  const db = admin();
+
+  // Get and atomically increment the next order number from system_settings
+  const { data: setting } = await db
+    .from("system_settings")
+    .select("value")
+    .eq("key", "next_order_number")
+    .single();
+
+  const current = parseInt(setting?.value || "50001", 10);
+  const orderNumber = String(current);
+
+  // Increment for next use
+  await db
+    .from("system_settings")
+    .update({ value: String(current + 1), updated_at: new Date().toISOString() })
+    .eq("key", "next_order_number");
+
+  return orderNumber;
 }
 
 // ─── List orders ─────────────────────────────────────────
