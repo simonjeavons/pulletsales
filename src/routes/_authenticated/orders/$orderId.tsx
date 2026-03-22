@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_authenticated/orders/$orderId")({
 const statusColors: Record<OrderStatus, "success" | "warning" | "danger" | "info" | "neutral"> = {
   draft: "neutral",
   confirmed: "info",
+  amended: "warning",
   pending_despatch: "warning",
   ready_for_despatch: "warning",
   completed: "success",
@@ -39,6 +40,7 @@ const statusColors: Record<OrderStatus, "success" | "warning" | "danger" | "info
 const statusLabels: Record<OrderStatus, string> = {
   draft: "Draft",
   confirmed: "Confirmed",
+  amended: "Amended",
   pending_despatch: "Pending Despatch",
   ready_for_despatch: "Ready for Despatch",
   completed: "Completed",
@@ -79,9 +81,10 @@ function OrderDetailPage() {
 
   if (!order) return <div className="p-8 text-gray-500">Order not found</div>;
 
-  const canConfirm = order.status === "draft" && order.lines.length > 0;
-  const canDespatch = ["confirmed", "pending_despatch", "ready_for_despatch"].includes(order.status);
-  const canCancel = ["draft", "confirmed"].includes(order.status);
+  const canConfirm = (order.status === "draft" || order.status === "amended") && order.lines.length > 0;
+  const canDespatch = ["confirmed", "amended", "pending_despatch", "ready_for_despatch"].includes(order.status);
+  const canCancel = ["draft", "confirmed", "amended"].includes(order.status);
+  const isAmended = order.status === "amended";
 
   return (
     <div>
@@ -97,10 +100,10 @@ function OrderDetailPage() {
               <Button
                 size="sm"
                 onClick={() =>
-                  setConfirmAction({ status: "confirmed", label: "Confirm Order" })
+                  setConfirmAction({ status: "confirmed", label: isAmended ? "Re-confirm Order" : "Confirm Order" })
                 }
               >
-                Confirm Order
+                {isAmended ? "Re-confirm Order" : "Confirm Order"}
               </Button>
             )}
             {canCancel && (
@@ -305,6 +308,7 @@ function DespatchTab({
   const [extras, setExtras] = useState<any[]>([]);
 
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [unloadingTime, setUnloadingTime] = useState("");
   const [transporterId, setTransporterId] = useState("");
   const [rearers, setRearers] = useState<any[]>([]);
   const [lines, setLines] = useState<
@@ -351,6 +355,7 @@ function DespatchTab({
 
     if (existingDespatch) {
       setDeliveryDate(existingDespatch.actual_delivery_date || "");
+      setUnloadingTime(existingDespatch.proposed_unloading_time || "");
       setTransporterId(existingDespatch.transporter_id || "");
       setLines(
         existingDespatch.lines.map((l: any) => ({
@@ -448,6 +453,7 @@ function DespatchTab({
         orderId,
         despatch: {
           actual_delivery_date: deliveryDate,
+          proposed_unloading_time: unloadingTime || undefined,
           transporter_id: transporterId,
           lines: validLines.map((l) => ({
             order_line_id: l.order_line_id || null,
@@ -556,12 +562,20 @@ function DespatchTab({
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Despatch Details
         </h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <FormField label="Actual Delivery Date" required>
             <input
               type="date"
               value={deliveryDate}
               onChange={(e) => setDeliveryDate(e.target.value)}
+              className={inputClasses}
+            />
+          </FormField>
+          <FormField label="Proposed Unloading Time">
+            <input
+              type="time"
+              value={unloadingTime}
+              onChange={(e) => setUnloadingTime(e.target.value)}
               className={inputClasses}
             />
           </FormField>

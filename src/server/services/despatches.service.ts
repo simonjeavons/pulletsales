@@ -87,6 +87,7 @@ export async function saveDespatch(orderId: string, input: DespatchInput, create
       .from("despatches")
       .update({
         actual_delivery_date: input.actual_delivery_date,
+        proposed_unloading_time: input.proposed_unloading_time || null,
         transporter_id: input.transporter_id,
       })
       .eq("id", existing.id);
@@ -98,12 +99,19 @@ export async function saveDespatch(orderId: string, input: DespatchInput, create
     await db.from("despatch_lines").delete().eq("despatch_id", despatchId);
     await db.from("despatch_extras").delete().eq("despatch_id", despatchId);
   } else {
+    // Generate despatch number
+    const { data: dnSetting } = await db.from("system_settings").select("value").eq("key", "next_despatch_number").single();
+    const dnCurrent = parseInt(dnSetting?.value || "20700", 10);
+    await db.from("system_settings").update({ value: String(dnCurrent + 1), updated_at: new Date().toISOString() }).eq("key", "next_despatch_number");
+
     // Create new
     const { data: despatch, error } = await db
       .from("despatches")
       .insert({
         order_id: orderId,
+        despatch_number: String(dnCurrent),
         actual_delivery_date: input.actual_delivery_date,
+        proposed_unloading_time: input.proposed_unloading_time || null,
         transporter_id: input.transporter_id,
         created_by: createdBy || null,
       })

@@ -151,6 +151,7 @@ export type TransporterUpdate = Partial<Omit<Transporter, "id" | "created_at">>;
 export type OrderStatus =
   | "draft"
   | "confirmed"
+  | "amended"
   | "pending_despatch"
   | "ready_for_despatch"
   | "completed"
@@ -169,6 +170,8 @@ export interface Order {
   internal_notes: string | null;
   confirmation_pdf_url: string | null;
   confirmed_at: string | null;
+  amendment_count: number;
+  amended_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -220,7 +223,9 @@ export interface OrderWithRelations extends Order {
 export interface Despatch {
   id: string;
   order_id: string;
+  despatch_number: string | null;
   actual_delivery_date: string | null;
+  proposed_unloading_time: string | null;
   transporter_id: string | null;
   delivery_advice_pdf_url: string | null;
   despatch_note_pdf_url: string | null;

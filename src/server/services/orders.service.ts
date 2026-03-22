@@ -12,7 +12,8 @@ const admin = () => getSupabaseAdminClient();
 // ─── Valid status transitions ────────────────────────────
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   draft: ["confirmed", "cancelled"],
-  confirmed: ["pending_despatch", "cancelled"],
+  confirmed: ["amended", "pending_despatch", "cancelled"],
+  amended: ["confirmed", "cancelled"],
   pending_despatch: ["ready_for_despatch", "cancelled"],
   ready_for_despatch: ["completed", "cancelled"],
   completed: ["invoiced"],
@@ -222,17 +223,29 @@ export async function createOrder(input: OrderInput, createdBy?: string) {
 export async function updateOrder(id: string, input: OrderInput) {
   const db = admin();
 
+  // Check current status — if confirmed, auto-move to amended
+  const { data: currentOrder } = await db.from("orders").select("status, amendment_count").eq("id", id).single();
+
+  const updates: Record<string, any> = {
+    customer_id: input.customer_id,
+    delivery_address_id: input.delivery_address_id || null,
+    rep_id: input.rep_id || null,
+    requested_delivery_week_commencing: input.requested_delivery_week_commencing || null,
+    customer_notes: input.customer_notes || null,
+    internal_notes: input.internal_notes || null,
+  };
+
+  // Auto-transition to amended if editing a confirmed order
+  if (currentOrder?.status === "confirmed") {
+    updates.status = "amended";
+    updates.amendment_count = (currentOrder.amendment_count || 0) + 1;
+    updates.amended_at = new Date().toISOString();
+  }
+
   // Update header
   const { error: orderError } = await db
     .from("orders")
-    .update({
-      customer_id: input.customer_id,
-      delivery_address_id: input.delivery_address_id || null,
-      rep_id: input.rep_id || null,
-      requested_delivery_week_commencing: input.requested_delivery_week_commencing || null,
-      customer_notes: input.customer_notes || null,
-      internal_notes: input.internal_notes || null,
-    })
+    .update(updates)
     .eq("id", id);
 
   if (orderError) throw new Error(orderError.message);

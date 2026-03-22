@@ -139,6 +139,7 @@ export const despatchLineSchema = z.object({
 
 export const despatchSchema = z.object({
   actual_delivery_date: z.string().min(1, "Delivery date is required"),
+  proposed_unloading_time: z.string().optional().or(z.literal("")),
   transporter_id: z.string().uuid("Select a transporter"),
   lines: z.array(despatchLineSchema).min(1, "At least one line is required"),
   extra_ids: z.array(z.string().uuid()).default([]),
