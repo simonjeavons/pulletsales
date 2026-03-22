@@ -99,13 +99,12 @@ function InvoicesPage() {
     const csvData = await generateInvoiceCsvFn({ data: { invoiceIds: selectedIds } });
     if (!csvData || csvData.length === 0) return;
 
-    const headers = Object.keys(csvData[0]);
-    const csvContent = [
-      headers.join(","),
-      ...csvData.map((row: any) =>
-        headers.map((h) => `"${String(row[h] ?? "").replace(/"/g, '""')}"`).join(",")
-      ),
-    ].join("\n");
+    // TAS format: no headers, just comma-separated values
+    // TAS format columns in order
+    const cols = ["type", "customer_ref", "nominal", "depot", "invoice_date", "invoice_number", "details", "grand_total", "vat_code", "tax_amount"];
+    const csvContent = csvData.map((row: any) =>
+      cols.map((c) => String(row[c] ?? "")).join(",")
+    ).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -133,6 +132,7 @@ function InvoicesPage() {
     },
     { key: "number", header: "Invoice #", render: (inv: any) => <span className="font-medium">{inv.invoice_number}</span> },
     { key: "order", header: "Order", render: (inv: any) => inv.order?.order_number || "Ad-hoc" },
+    { key: "custRef", header: "Ref", render: (inv: any) => <span className="font-mono text-xs">{inv.customer?.customer_unique_id || "—"}</span> },
     { key: "customer", header: "Customer", render: (inv: any) => inv.customer?.company_name || "—" },
     { key: "date", header: "Date", render: (inv: any) => new Date(inv.invoice_date).toLocaleDateString() },
     { key: "vat", header: "VAT", render: (inv: any) => {
@@ -184,6 +184,16 @@ function InvoicesPage() {
           <option value="exported">Exported</option>
           <option value="void">Void</option>
         </select>
+        <button
+          onClick={() => setStatusFilter(statusFilter === "exported" ? "" : "exported")}
+          className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+            statusFilter === "exported"
+              ? "bg-green-50 border-green-300 text-green-700"
+              : "border-gray-300 text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          {statusFilter === "exported" ? "✓ Showing Exported" : "Show Exported Only"}
+        </button>
       </div>
 
       <DataTable columns={columns} data={data?.data ?? []} keyExtractor={(inv: any) => inv.id} loading={isLoading} emptyMessage="No invoices found." />

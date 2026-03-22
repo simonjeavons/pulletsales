@@ -22,6 +22,11 @@ import {
 } from "~/components/forms/FormField";
 import type { OrderStatus, OrderWithRelations } from "~/types/database";
 import type { DespatchLineInput } from "~/lib/validation/schemas";
+import { pdf } from "@react-pdf/renderer";
+import { OrderConfirmationPdf } from "~/lib/pdf/OrderConfirmationPdf";
+import { DeliveryAdvicePdf } from "~/lib/pdf/DeliveryAdvicePdf";
+import { DespatchNotePdf } from "~/lib/pdf/DespatchNotePdf";
+import { SalmonellaFormPdf } from "~/lib/pdf/SalmonellaFormPdf";
 
 export const Route = createFileRoute("/_authenticated/orders/$orderId")({
   component: OrderDetailPage,
@@ -86,6 +91,64 @@ function OrderDetailPage() {
   const canDespatch = ["confirmed", "amended", "pending_despatch", "ready_for_despatch"].includes(order.status);
   const canCancel = ["draft", "confirmed", "amended"].includes(order.status);
   const isAmended = order.status === "amended";
+  const canGenerateConfirmationPdf = ["confirmed", "amended"].includes(order.status);
+
+  const downloadPdf = async (element: React.ReactElement, filename: string) => {
+    try {
+      const blob = await pdf(element).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    }
+  };
+
+  const handleOrderConfirmationPdf = () => {
+    const repName = order.rep?.name || "";
+    const isAmendedPdf = order.status === "amended" || (order.amendment_count ?? 0) > 0;
+    const confirmDate = order.confirmed_at
+      ? new Date(order.confirmed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
+      : new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+
+    downloadPdf(
+      <OrderConfirmationPdf data={{
+        isAmended: isAmendedPdf,
+        date: confirmDate,
+        orderNumber: order.order_number,
+        repName,
+        customer: {
+          company_name: order.customer?.company_name || "",
+          address_line_1: order.customer?.address_line_1 || undefined,
+          address_line_2: order.customer?.address_line_2 || undefined,
+          town_city: order.customer?.town_city || undefined,
+          post_code: order.customer?.post_code || undefined,
+        },
+        lines: order.lines.map((l, i) => ({
+          itemNumber: i + 1,
+          deliveryDate: order.requested_delivery_week_commencing
+            ? new Date(order.requested_delivery_week_commencing).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
+            : "TBC",
+          quantity: l.quantity,
+          breed: l.breed?.breed_name || "",
+          age: l.age_weeks,
+          price: Number(l.price),
+          foodClause: Number(l.food_clause_value),
+          deliveryAddress: order.delivery_address ? {
+            label: order.delivery_address.label,
+            address_line_1: order.delivery_address.address_line_1 || undefined,
+            town_city: order.delivery_address.town_city || undefined,
+            post_code: order.delivery_address.post_code || undefined,
+          } : undefined,
+          extras: l.extras.map((e) => e.name),
+        })),
+      }} />,
+      `Order_Confirmation_${order.order_number}.pdf`
+    );
+  };
 
   return (
     <div>
@@ -97,6 +160,11 @@ function OrderDetailPage() {
             <Badge variant={statusColors[order.status]}>
               {statusLabels[order.status]}
             </Badge>
+            {canGenerateConfirmationPdf && (
+              <Button size="sm" variant="secondary" onClick={handleOrderConfirmationPdf}>
+                📄 Order Confirmation PDF
+              </Button>
+            )}
             {canConfirm && (
               <Button
                 size="sm"

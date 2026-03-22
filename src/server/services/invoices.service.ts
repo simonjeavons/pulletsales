@@ -151,47 +151,84 @@ export async function exportInvoices(invoiceIds: string[], exportedBy?: string) 
   return batch;
 }
 
-// ─── Generate CSV data for export ────────────────────────
+// ─── Generate TAS CSV data for export ────────────────────
 export async function generateInvoiceCsvData(invoiceIds: string[]) {
   const db = admin();
+
+  // Get TAS settings
+  const { data: settings } = await db.from("system_settings").select("key, value").in("key", ["tas_nominal", "tas_depot"]);
+  const settingsMap = Object.fromEntries((settings ?? []).map((s: any) => [s.key, s.value]));
+  const nominal = settingsMap["tas_nominal"] || "32000";
+  const depot = settingsMap["tas_depot"] || "100";
 
   const rows = [];
 
   for (const invoiceId of invoiceIds) {
     const { data: invoice } = await db
       .from("invoices")
-      .select("*, customer:customers(*), order:orders(order_number)")
+      .select("*, customer:customers(*), order:orders(order_number), vat_rate:vat_rates(rate)")
       .eq("id", invoiceId)
       .single();
 
     if (!invoice) continue;
 
-    // Get despatch lines for this order
-    const { data: despatch } = await db
-      .from("despatches")
-      .select("id")
-      .eq("order_id", invoice.order_id)
-      .single();
+    // Get despatch lines for this order (final quantities)
+    let lines: any[] = [];
+    if (invoice.order_id) {
+      const { data: despatch } = await db
+        .from("despatches")
+        .select("id")
+        .eq("order_id", invoice.order_id)
+        .single();
 
-    if (!despatch) continue;
+      if (despatch) {
+        const { data: dLines } = await db
+          .from("despatch_lines")
+          .select("*, breed:breeds(breed_name)")
+          .eq("despatch_id", despatch.id);
+        lines = dLines ?? [];
+      }
+    }
 
-    const { data: lines } = await db
-      .from("despatch_lines")
-      .select("*, breed:breeds(breed_name)")
-      .eq("despatch_id", despatch.id);
+    // Format date as DD/MM/YYYY
+    const dateParts = invoice.invoice_date.split("-");
+    const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
 
-    for (const line of lines ?? []) {
+    const vatRate = Number((invoice as any).vat_rate?.rate ?? 0);
+    const vatCode = vatRate === 0 ? "T0" : vatRate === 20 ? "T1" : "T0";
+
+    // One row per despatch line (or one row for ad-hoc)
+    if (lines.length > 0) {
+      for (const line of lines) {
+        const grandTotal = (line.quantity * Number(line.price)).toFixed(2);
+        const taxAmount = (Number(grandTotal) * (vatRate / 100)).toFixed(2);
+
+        rows.push({
+          type: "SI",
+          customer_ref: (invoice as any).customer?.customer_unique_id || "",
+          nominal,
+          depot,
+          invoice_date: formattedDate,
+          invoice_number: invoice.invoice_number,
+          details: `${line.quantity} ${(line as any).breed?.breed_name || "Pullets"}`,
+          grand_total: grandTotal,
+          vat_code: vatCode,
+          tax_amount: taxAmount,
+        });
+      }
+    } else {
+      // Ad-hoc invoice with no lines
       rows.push({
+        type: "SI",
+        customer_ref: (invoice as any).customer?.customer_unique_id || "",
+        nominal,
+        depot,
+        invoice_date: formattedDate,
         invoice_number: invoice.invoice_number,
-        invoice_date: invoice.invoice_date,
-        customer_id: (invoice as any).customer?.customer_unique_id || "",
-        customer_name: (invoice as any).customer?.company_name || "",
-        order_number: (invoice as any).order?.order_number || "",
-        breed: (line as any).breed?.breed_name || "",
-        quantity: line.quantity,
-        price: line.price,
-        food_clause_value: line.food_clause_value,
-        line_total: (line.quantity * line.price).toFixed(2),
+        details: "Ad-hoc Invoice",
+        grand_total: "0.00",
+        vat_code: vatCode,
+        tax_amount: "0.00",
       });
     }
   }
