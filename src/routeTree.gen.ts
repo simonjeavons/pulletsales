@@ -21,6 +21,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders/index'
 import { Route as AuthenticatedOrdersNewRouteImport } from './routes/_authenticated/orders/new'
 import { Route as AuthenticatedOrdersOrderIdRouteImport } from './routes/_authenticated/orders/$orderId'
+import { Route as AuthenticatedInvoicesInvoiceIdRouteImport } from './routes/_authenticated/invoices/$invoiceId'
 import { Route as AuthenticatedAdminVatRatesRouteImport } from './routes/_authenticated/admin/vat-rates'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminTransportersRouteImport } from './routes/_authenticated/admin/transporters'
@@ -92,6 +93,12 @@ const AuthenticatedOrdersOrderIdRoute =
     path: '/orders/$orderId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedInvoicesInvoiceIdRoute =
+  AuthenticatedInvoicesInvoiceIdRouteImport.update({
+    id: '/$invoiceId',
+    path: '/$invoiceId',
+    getParentRoute: () => AuthenticatedInvoicesRoute,
+  } as any)
 const AuthenticatedAdminVatRatesRoute =
   AuthenticatedAdminVatRatesRouteImport.update({
     id: '/vat-rates',
@@ -151,7 +158,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/invoices': typeof AuthenticatedInvoicesRoute
+  '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/set-password': typeof AuthSetPasswordRoute
   '/admin/breeds': typeof AuthenticatedAdminBreedsRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
+  '/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
   '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/orders/new': typeof AuthenticatedOrdersNewRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
@@ -173,7 +181,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/invoices': typeof AuthenticatedInvoicesRoute
+  '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/set-password': typeof AuthSetPasswordRoute
   '/admin/breeds': typeof AuthenticatedAdminBreedsRoute
@@ -185,6 +193,7 @@ export interface FileRoutesByTo {
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
+  '/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
   '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/orders/new': typeof AuthenticatedOrdersNewRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
@@ -197,7 +206,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
+  '/_authenticated/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/set-password': typeof AuthSetPasswordRoute
   '/_authenticated/admin/breeds': typeof AuthenticatedAdminBreedsRoute
@@ -209,6 +218,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
+  '/_authenticated/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
   '/_authenticated/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/_authenticated/orders/new': typeof AuthenticatedOrdersNewRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/admin/transporters'
     | '/admin/users'
     | '/admin/vat-rates'
+    | '/invoices/$invoiceId'
     | '/orders/$orderId'
     | '/orders/new'
     | '/orders/'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/admin/transporters'
     | '/admin/users'
     | '/admin/vat-rates'
+    | '/invoices/$invoiceId'
     | '/orders/$orderId'
     | '/orders/new'
     | '/orders'
@@ -278,6 +290,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/transporters'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/vat-rates'
+    | '/_authenticated/invoices/$invoiceId'
     | '/_authenticated/orders/$orderId'
     | '/_authenticated/orders/new'
     | '/_authenticated/orders/'
@@ -378,6 +391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOrdersOrderIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/invoices/$invoiceId': {
+      id: '/_authenticated/invoices/$invoiceId'
+      path: '/$invoiceId'
+      fullPath: '/invoices/$invoiceId'
+      preLoaderRoute: typeof AuthenticatedInvoicesInvoiceIdRouteImport
+      parentRoute: typeof AuthenticatedInvoicesRoute
+    }
     '/_authenticated/admin/vat-rates': {
       id: '/_authenticated/admin/vat-rates'
       path: '/vat-rates'
@@ -471,10 +491,23 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
+interface AuthenticatedInvoicesRouteChildren {
+  AuthenticatedInvoicesInvoiceIdRoute: typeof AuthenticatedInvoicesInvoiceIdRoute
+}
+
+const AuthenticatedInvoicesRouteChildren: AuthenticatedInvoicesRouteChildren = {
+  AuthenticatedInvoicesInvoiceIdRoute: AuthenticatedInvoicesInvoiceIdRoute,
+}
+
+const AuthenticatedInvoicesRouteWithChildren =
+  AuthenticatedInvoicesRoute._addFileChildren(
+    AuthenticatedInvoicesRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
+  AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRouteWithChildren
   AuthenticatedOrdersOrderIdRoute: typeof AuthenticatedOrdersOrderIdRoute
   AuthenticatedOrdersNewRoute: typeof AuthenticatedOrdersNewRoute
   AuthenticatedOrdersIndexRoute: typeof AuthenticatedOrdersIndexRoute
@@ -483,7 +516,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
+  AuthenticatedInvoicesRoute: AuthenticatedInvoicesRouteWithChildren,
   AuthenticatedOrdersOrderIdRoute: AuthenticatedOrdersOrderIdRoute,
   AuthenticatedOrdersNewRoute: AuthenticatedOrdersNewRoute,
   AuthenticatedOrdersIndexRoute: AuthenticatedOrdersIndexRoute,

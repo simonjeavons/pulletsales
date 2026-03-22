@@ -37,3 +37,21 @@ export const getInvoicePdfDataFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     return invoicesService.getInvoicePdfData(data.invoiceId);
   });
+
+export const createAdHocInvoiceFn = createServerFn({ method: "POST" })
+  .inputValidator((data: { customer_id: string; invoice_date: string; vat_rate_id?: string }) => data)
+  .handler(async ({ data }) => {
+    return invoicesService.createAdHocInvoice(data);
+  });
+
+export const getInvoiceFn = createServerFn({ method: "GET" })
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    return invoicesService.getInvoice(data.id);
+  });
+
+export const saveInvoiceLinesFn = createServerFn({ method: "POST" })
+  .inputValidator((data: { invoiceId: string; lines: Array<{ description: string; quantity: number; unit_price: number; vat_rate: number }> }) => data)
+  .handler(async ({ data }) => {
+    return invoicesService.saveInvoiceLines(data.invoiceId, data.lines);
+  });

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import { PageHeader } from "~/components/ui/PageHeader";
 import { Button } from "~/components/ui/Button";
@@ -10,46 +10,83 @@ export const Route = createFileRoute("/_authenticated/admin/settings")({
   component: SettingsPage,
 });
 
+interface Setting {
+  key: string;
+  value: string;
+  description: string | null;
+}
+
+const settingGroups = [
+  {
+    title: "Order Numbering",
+    settings: [
+      { key: "next_order_number", label: "Next Order Number", type: "number" },
+      { key: "next_despatch_number", label: "Next Despatch Number", type: "number" },
+      { key: "next_invoice_number", label: "Next Invoice Number", type: "number" },
+    ],
+  },
+  {
+    title: "TAS Export",
+    settings: [
+      { key: "tas_nominal", label: "Default Nominal Code", type: "text" },
+      { key: "tas_depot", label: "Default Depot Code", type: "text" },
+      { key: "trading_company", label: "Trading Company Code", type: "text" },
+    ],
+  },
+  {
+    title: "Invoice Settings",
+    settings: [
+      { key: "vat_registration", label: "VAT Registration Number", type: "text" },
+      { key: "payment_terms_days", label: "Payment Terms (days)", type: "number" },
+    ],
+  },
+  {
+    title: "Bank Details",
+    settings: [
+      { key: "bank_name", label: "Bank Name", type: "text" },
+      { key: "bank_sort_code", label: "Sort Code", type: "text" },
+      { key: "bank_account_no", label: "Account Number", type: "text" },
+    ],
+  },
+];
+
 function SettingsPage() {
   const supabase = getSupabaseBrowserClient();
-  const [nextOrderNumber, setNextOrderNumber] = useState("");
-  const [currentValue, setCurrentValue] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
     supabase
       .from("system_settings")
-      .select("value")
-      .eq("key", "next_order_number")
-      .single()
+      .select("key, value")
       .then(({ data }) => {
-        const val = data?.value || "50001";
-        setNextOrderNumber(val);
-        setCurrentValue(val);
+        const map: Record<string, string> = {};
+        (data ?? []).forEach((s: any) => { map[s.key] = s.value; });
+        setValues(map);
         setLoading(false);
       });
   }, []);
 
   const saveMut = useMutation({
-    mutationFn: async (value: string) => {
-      const num = parseInt(value, 10);
-      if (isNaN(num) || num < 1) throw new Error("Must be a valid positive number");
-
-      const { error } = await supabase
-        .from("system_settings")
-        .update({ value: String(num), updated_at: new Date().toISOString() })
-        .eq("key", "next_order_number");
-
-      if (error) throw new Error(error.message);
-      return num;
+    mutationFn: async (updates: Record<string, string>) => {
+      for (const [key, value] of Object.entries(updates)) {
+        const { error } = await supabase
+          .from("system_settings")
+          .update({ value, updated_at: new Date().toISOString() })
+          .eq("key", key);
+        if (error) throw new Error(error.message);
+      }
     },
-    onSuccess: (num) => {
-      setCurrentValue(String(num));
-      setSuccess(`Next order number set to ${num}`);
+    onSuccess: () => {
+      setSuccess("Settings saved");
       setTimeout(() => setSuccess(""), 3000);
     },
   });
+
+  const handleSave = () => {
+    saveMut.mutate(values);
+  };
 
   if (loading) {
     return (
@@ -61,53 +98,40 @@ function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="System Settings" description="Configure system-wide settings." />
+      <PageHeader
+        title="System Settings"
+        description="Configure system-wide settings."
+        actions={
+          <Button onClick={handleSave} loading={saveMut.isPending}>
+            Save All Settings
+          </Button>
+        }
+      />
 
-      <div className="max-w-lg space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">Order Numbering</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            Set the next order number to be assigned. Current value: <strong>{currentValue}</strong>
-          </p>
-
-          {success && (
-            <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg border border-green-200 mb-4">
-              {success}
-            </div>
-          )}
-
-          {saveMut.error && (
-            <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200 mb-4">
-              {(saveMut.error as Error).message}
-            </div>
-          )}
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              saveMut.mutate(nextOrderNumber);
-            }}
-            className="flex items-end gap-3"
-          >
-            <FormField label="Next Order Number" className="flex-1">
-              <input
-                type="number"
-                min="1"
-                value={nextOrderNumber}
-                onChange={(e) => setNextOrderNumber(e.target.value)}
-                className={inputClasses}
-                placeholder="e.g. 50001"
-              />
-            </FormField>
-            <Button type="submit" loading={saveMut.isPending}>
-              Save
-            </Button>
-          </form>
-
-          <p className="text-xs text-gray-400 mt-3">
-            Orders will be numbered sequentially from this value. Numbers are plain digits (e.g. 50001, 50002, 50003...).
-          </p>
+      {success && (
+        <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg border border-green-200 mb-6">
+          {success}
         </div>
+      )}
+
+      <div className="space-y-6 max-w-2xl">
+        {settingGroups.map((group) => (
+          <div key={group.title} className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{group.title}</h3>
+            <div className="space-y-4">
+              {group.settings.map((s) => (
+                <FormField key={s.key} label={s.label}>
+                  <input
+                    type={s.type}
+                    value={values[s.key] || ""}
+                    onChange={(e) => setValues((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                    className={inputClasses}
+                  />
+                </FormField>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

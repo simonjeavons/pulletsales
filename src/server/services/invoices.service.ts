@@ -5,15 +5,20 @@ const admin = () => getSupabaseAdminClient();
 
 // ─── Generate invoice number ─────────────────────────────
 async function nextInvoiceNumber(): Promise<string> {
-  const { data: raw } = await admin()
-    .from("invoices")
-    .select("invoice_number")
-    .order("created_at", { ascending: false })
-    .limit(1);
+  const db = admin();
+  const { data: setting } = await db
+    .from("system_settings")
+    .select("value")
+    .eq("key", "next_invoice_number")
+    .single();
 
-  const last = raw?.[0]?.invoice_number;
-  const num = last ? parseInt(last.replace("INV-", ""), 10) + 1 : 10001;
-  return `INV-${num}`;
+  const current = parseInt(setting?.value || "41000", 10);
+  await db
+    .from("system_settings")
+    .update({ value: String(current + 1), updated_at: new Date().toISOString() })
+    .eq("key", "next_invoice_number");
+
+  return String(current);
 }
 
 // ─── List invoices ───────────────────────────────────────
@@ -93,6 +98,93 @@ export async function createInvoice(orderId: string) {
   await db.from("orders").update({ status: "invoiced" }).eq("id", orderId);
 
   return invoice as Invoice;
+}
+
+// ─── Create ad-hoc invoice ────────────────────────────────
+export async function createAdHocInvoice(input: {
+  customer_id: string;
+  invoice_date: string;
+  vat_rate_id?: string;
+}) {
+  const db = admin();
+  const invoiceNumber = await nextInvoiceNumber();
+
+  const { data: invoice, error } = await db
+    .from("invoices")
+    .insert({
+      invoice_number: invoiceNumber,
+      order_id: null,
+      customer_id: input.customer_id,
+      invoice_date: input.invoice_date,
+      vat_rate_id: input.vat_rate_id || null,
+      status: "draft",
+      export_status: "pending",
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return invoice as Invoice;
+}
+
+// ─── Get invoice with relations ──────────────────────────
+export async function getInvoice(id: string) {
+  const db = admin();
+
+  const { data: invoice, error } = await db
+    .from("invoices")
+    .select("*, customer:customers(*), order:orders(order_number, rep:reps(name)), vat_rate:vat_rates(name, rate)")
+    .eq("id", id)
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  // Get invoice lines
+  const { data: lines } = await db
+    .from("invoice_lines")
+    .select("*")
+    .eq("invoice_id", id)
+    .order("created_at");
+
+  return { ...invoice, lines: lines ?? [] };
+}
+
+// ─── Save invoice lines ─────────────────────────────────
+export async function saveInvoiceLines(invoiceId: string, lines: Array<{
+  description: string;
+  quantity: number;
+  unit_price: number;
+  vat_rate: number;
+}>) {
+  const db = admin();
+
+  // Delete existing and re-insert
+  await db.from("invoice_lines").delete().eq("invoice_id", invoiceId);
+
+  if (lines.length > 0) {
+    const { error } = await db.from("invoice_lines").insert(
+      lines.map((l) => ({
+        invoice_id: invoiceId,
+        description: l.description,
+        quantity: l.quantity,
+        unit_price: l.unit_price,
+        vat_rate: l.vat_rate,
+      }))
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  // Recalculate totals
+  const netTotal = lines.reduce((s, l) => s + l.quantity * l.unit_price, 0);
+  const vatTotal = lines.reduce((s, l) => s + l.quantity * l.unit_price * (l.vat_rate / 100), 0);
+
+  await db.from("invoices").update({
+    net_total: netTotal,
+    vat_total: vatTotal,
+    grand_total: netTotal + vatTotal,
+  }).eq("id", invoiceId);
+
+  return getInvoice(invoiceId);
 }
 
 // ─── Finalise invoice ────────────────────────────────────

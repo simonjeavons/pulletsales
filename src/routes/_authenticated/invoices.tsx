@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
@@ -10,7 +10,7 @@ import {
   getInvoicePdfDataFn,
 } from "~/server/functions/invoices";
 import { listOrdersFn } from "~/server/functions/orders";
-import { createInvoiceFn } from "~/server/functions/invoices";
+import { createInvoiceFn, createAdHocInvoiceFn } from "~/server/functions/invoices";
 import { pdf } from "@react-pdf/renderer";
 import { InvoicePdf } from "~/lib/pdf/InvoicePdf";
 import { ExportConfirmationPdf } from "~/lib/pdf/ExportConfirmationPdf";
@@ -71,15 +71,7 @@ function InvoicesPage() {
   });
 
   const adHocMut = useMutation({
-    mutationFn: async (input: { invoice_number: string; customer_id: string; invoice_date: string; vat_rate_id: string }) => {
-      const { error } = await supabase.from("invoices").insert({
-        ...input,
-        order_id: null,
-        status: "draft",
-        export_status: "pending",
-      });
-      if (error) throw new Error(error.message);
-    },
+    mutationFn: createAdHocInvoiceFn,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       setShowAdHocModal(false);
@@ -189,28 +181,39 @@ function InvoicesPage() {
     {
       key: "select", header: "",
       render: (inv: any) => (
-        <input type="checkbox" checked={selectedIds.includes(inv.id)} onChange={() => toggleSelect(inv.id)} className="h-4 w-4 rounded border-gray-300" />
+        <input type="checkbox" checked={selectedIds.includes(inv.id)} onChange={(e) => { e.stopPropagation(); toggleSelect(inv.id); }} className="h-4 w-4 rounded border-gray-300" />
       ),
     },
-    { key: "number", header: "Invoice #", render: (inv: any) => <span className="font-medium">{inv.invoice_number}</span> },
+    {
+      key: "number", header: "Invoice #",
+      render: (inv: any) => (
+        <Link to={`/invoices/${inv.id}`} className="font-medium text-blue-600 hover:text-blue-800">
+          {inv.invoice_number}
+        </Link>
+      ),
+    },
     { key: "order", header: "Order", render: (inv: any) => inv.order?.order_number || "Ad-hoc" },
     { key: "custRef", header: "Ref", render: (inv: any) => <span className="font-mono text-xs">{inv.customer?.customer_unique_id || "—"}</span> },
     { key: "customer", header: "Customer", render: (inv: any) => inv.customer?.company_name || "—" },
     { key: "date", header: "Date", render: (inv: any) => new Date(inv.invoice_date).toLocaleDateString() },
-    { key: "vat", header: "VAT", render: (inv: any) => {
-      const rate = vatRates.find((r) => r.id === inv.vat_rate_id);
-      return rate ? `${Number(rate.rate).toFixed(2)}%` : "—";
-    }},
-    { key: "status", header: "Status", render: (inv: any) => <Badge variant={statusColors[inv.status as InvoiceStatus]}>{inv.status}</Badge> },
-    { key: "exported", header: "Exported", render: (inv: any) => inv.exported_at ? <Badge variant="success">Yes</Badge> : <Badge variant="neutral">No</Badge> },
+    { key: "total", header: "Total", render: (inv: any) => inv.grand_total ? `£${Number(inv.grand_total).toFixed(2)}` : "—" },
+    {
+      key: "status", header: "Status",
+      render: (inv: any) => (
+        <div className="flex gap-1">
+          <Badge variant={statusColors[inv.status as InvoiceStatus]}>{inv.status}</Badge>
+          {inv.exported_at && <Badge variant="success">Exported</Badge>}
+        </div>
+      ),
+    },
     {
       key: "actions", header: "", className: "text-right",
       render: (inv: any) => (
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => handlePrintInvoicePdf(inv.id)}>📄</Button>
-          {inv.status === "draft" && (
-            <Button variant="ghost" size="sm" onClick={() => finaliseMut.mutate({ data: { id: inv.id } })}>Finalise</Button>
-          )}
+          <Link to={`/invoices/${inv.id}`}>
+            <Button variant="ghost" size="sm">View</Button>
+          </Link>
+          <Button variant="ghost" size="sm" onClick={(e: any) => { e.stopPropagation(); handlePrintInvoicePdf(inv.id); }}>📄</Button>
         </div>
       ),
     },
@@ -333,12 +336,11 @@ function InvoicesPage() {
 
 function AdHocInvoiceModal({ open, onClose, onSubmit, loading, vatRates }: {
   open: boolean; onClose: () => void;
-  onSubmit: (v: { invoice_number: string; customer_id: string; invoice_date: string; vat_rate_id: string }) => void;
+  onSubmit: (v: { data: { customer_id: string; invoice_date: string; vat_rate_id?: string } }) => void;
   loading: boolean; vatRates: VatRate[];
 }) {
   const supabase = getSupabaseBrowserClient();
   const [customers, setCustomers] = useState<any[]>([]);
-  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [vatRateId, setVatRateId] = useState(vatRates.find((r) => r.is_default)?.id || "");
@@ -356,10 +358,8 @@ function AdHocInvoiceModal({ open, onClose, onSubmit, loading, vatRates }: {
 
   return (
     <Modal open={open} onClose={onClose} title="Create Ad-hoc Invoice">
-      <form onSubmit={(e) => { e.preventDefault(); onSubmit({ invoice_number: invoiceNumber, customer_id: customerId, invoice_date: invoiceDate, vat_rate_id: vatRateId }); }} className="space-y-4">
-        <FormField label="Invoice Number" required>
-          <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputClasses} required placeholder="e.g. INV-ADHOC-001" />
-        </FormField>
+      <p className="text-sm text-gray-500 mb-4">Invoice number will be assigned automatically from the sequence.</p>
+      <form onSubmit={(e) => { e.preventDefault(); onSubmit({ data: { customer_id: customerId, invoice_date: invoiceDate, vat_rate_id: vatRateId || undefined } }); }} className="space-y-4">
         <FormField label="Customer" required>
           <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={selectClasses} required>
             <option value="">— Select customer —</option>
