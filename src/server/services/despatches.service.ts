@@ -25,6 +25,7 @@ export async function getDespatch(orderId: string): Promise<DespatchWithRelation
     .select(`
       *,
       breed:breeds(*),
+      rearer:rearers(id, name),
       despatch_line_extras(extra_id, extras:extras(*))
     `)
     .eq("despatch_id", despatch.id)
@@ -39,6 +40,7 @@ export async function getDespatch(orderId: string): Promise<DespatchWithRelation
   const formattedLines = (lines ?? []).map((line: any) => ({
     ...line,
     breed: line.breed,
+    rearer: line.rearer ?? null,
     extras: (line.despatch_line_extras ?? []).map((dle: any) => dle.extras).filter(Boolean),
     despatch_line_extras: undefined,
   }));
@@ -120,9 +122,11 @@ export async function saveDespatch(orderId: string, input: DespatchInput, create
         despatch_id: despatchId,
         order_line_id: line.order_line_id || null,
         breed_id: line.breed_id,
+        rearer_id: line.rearer_id || null,
         quantity: line.quantity,
         price: line.price,
         food_clause_value: line.food_clause_value,
+        age_weeks: line.age_weeks ?? null,
       })
       .select()
       .single();
@@ -213,9 +217,11 @@ export async function copyOrderLinesToDespatch(orderId: string): Promise<Despatc
     lines: (lines ?? []).map((line: any) => ({
       order_line_id: line.id,
       breed_id: line.breed_id,
+      rearer_id: line.rearer_id || null,
       quantity: line.quantity,
       price: line.price,
       food_clause_value: line.food_clause_value,
+      age_weeks: line.age_weeks ?? null,
       extra_ids: (line.order_line_extras ?? []).map((ole: any) => ole.extra_id),
     })),
     extra_ids: (orderExtras ?? []).map((oe: any) => oe.extra_id),

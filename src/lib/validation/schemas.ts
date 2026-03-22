@@ -106,9 +106,11 @@ export const transporterSchema = z.object({
 // ─── Orders ──────────────────────────────────────────────
 export const orderLineSchema = z.object({
   breed_id: z.string().uuid("Select a breed"),
+  rearer_id: z.string().uuid().optional().nullable().or(z.literal("")),
   quantity: z.number().int().positive("Quantity must be greater than 0"),
   price: z.number().min(0, "Price cannot be negative"),
   food_clause_value: z.number().min(0, "Food clause cannot be negative"),
+  age_weeks: z.number().int().min(0).optional().nullable(),
   extra_ids: z.array(z.string().uuid()).default([]),
 });
 
@@ -127,9 +129,11 @@ export const orderSchema = z.object({
 export const despatchLineSchema = z.object({
   order_line_id: z.string().uuid().optional().nullable(),
   breed_id: z.string().uuid("Select a breed"),
+  rearer_id: z.string().uuid().optional().nullable().or(z.literal("")),
   quantity: z.number().int().positive("Quantity must be greater than 0"),
   price: z.number().min(0, "Price cannot be negative"),
   food_clause_value: z.number().min(0, "Food clause cannot be negative"),
+  age_weeks: z.number().int().min(0).optional().nullable(),
   extra_ids: z.array(z.string().uuid()).default([]),
 });
 

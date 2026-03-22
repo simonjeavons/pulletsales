@@ -21,6 +21,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders/index'
 import { Route as AuthenticatedOrdersNewRouteImport } from './routes/_authenticated/orders/new'
 import { Route as AuthenticatedOrdersOrderIdRouteImport } from './routes/_authenticated/orders/$orderId'
+import { Route as AuthenticatedAdminVatRatesRouteImport } from './routes/_authenticated/admin/vat-rates'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminTransportersRouteImport } from './routes/_authenticated/admin/transporters'
 import { Route as AuthenticatedAdminRepsRouteImport } from './routes/_authenticated/admin/reps'
@@ -90,6 +91,12 @@ const AuthenticatedOrdersOrderIdRoute =
     path: '/orders/$orderId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminVatRatesRoute =
+  AuthenticatedAdminVatRatesRouteImport.update({
+    id: '/vat-rates',
+    path: '/vat-rates',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -147,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
   '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/orders/new': typeof AuthenticatedOrdersNewRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
@@ -167,6 +175,7 @@ export interface FileRoutesByTo {
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
   '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/orders/new': typeof AuthenticatedOrdersNewRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
@@ -189,6 +198,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/reps': typeof AuthenticatedAdminRepsRoute
   '/_authenticated/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/admin/vat-rates': typeof AuthenticatedAdminVatRatesRoute
   '/_authenticated/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/_authenticated/orders/new': typeof AuthenticatedOrdersNewRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/admin/reps'
     | '/admin/transporters'
     | '/admin/users'
+    | '/admin/vat-rates'
     | '/orders/$orderId'
     | '/orders/new'
     | '/orders/'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/admin/reps'
     | '/admin/transporters'
     | '/admin/users'
+    | '/admin/vat-rates'
     | '/orders/$orderId'
     | '/orders/new'
     | '/orders'
@@ -252,6 +264,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/reps'
     | '/_authenticated/admin/transporters'
     | '/_authenticated/admin/users'
+    | '/_authenticated/admin/vat-rates'
     | '/_authenticated/orders/$orderId'
     | '/_authenticated/orders/new'
     | '/_authenticated/orders/'
@@ -352,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOrdersOrderIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/vat-rates': {
+      id: '/_authenticated/admin/vat-rates'
+      path: '/vat-rates'
+      fullPath: '/admin/vat-rates'
+      preLoaderRoute: typeof AuthenticatedAdminVatRatesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -412,6 +432,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminRepsRoute: typeof AuthenticatedAdminRepsRoute
   AuthenticatedAdminTransportersRoute: typeof AuthenticatedAdminTransportersRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminVatRatesRoute: typeof AuthenticatedAdminVatRatesRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -422,6 +443,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminRepsRoute: AuthenticatedAdminRepsRoute,
   AuthenticatedAdminTransportersRoute: AuthenticatedAdminTransportersRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminVatRatesRoute: AuthenticatedAdminVatRatesRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =

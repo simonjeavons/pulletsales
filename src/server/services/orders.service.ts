@@ -102,6 +102,7 @@ export async function getOrder(id: string): Promise<OrderWithRelations> {
     .select(`
       *,
       breed:breeds(*),
+      rearer:rearers(id, name),
       order_line_extras(extra_id, extras:extras(*))
     `)
     .eq("order_id", id)
@@ -123,6 +124,7 @@ export async function getOrder(id: string): Promise<OrderWithRelations> {
   const formattedLines = (lines ?? []).map((line: any) => ({
     ...line,
     breed: line.breed,
+    rearer: line.rearer ?? null,
     extras: (line.order_line_extras ?? []).map((ole: any) => ole.extras).filter(Boolean),
     order_line_extras: undefined,
   }));
@@ -168,9 +170,11 @@ export async function createOrder(input: OrderInput, createdBy?: string) {
       .insert({
         order_id: order.id,
         breed_id: line.breed_id,
+        rearer_id: line.rearer_id || null,
         quantity: line.quantity,
         price: line.price,
         food_clause_value: line.food_clause_value,
+        age_weeks: line.age_weeks ?? null,
       })
       .select()
       .single();
@@ -231,9 +235,11 @@ export async function updateOrder(id: string, input: OrderInput) {
       .insert({
         order_id: id,
         breed_id: line.breed_id,
+        rearer_id: line.rearer_id || null,
         quantity: line.quantity,
         price: line.price,
         food_clause_value: line.food_clause_value,
+        age_weeks: line.age_weeks ?? null,
       })
       .select()
       .single();

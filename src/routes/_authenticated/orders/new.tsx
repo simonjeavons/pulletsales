@@ -14,17 +14,21 @@ export const Route = createFileRoute("/_authenticated/orders/new")({
 
 interface LineEntry {
   breed_id: string;
+  rearer_id: string;
   quantity: string;
   price: string;
   food_clause_value: string;
+  age_weeks: string;
   extra_ids: string[];
 }
 
 const emptyLine = (): LineEntry => ({
   breed_id: "",
+  rearer_id: "",
   quantity: "",
   price: "",
   food_clause_value: "0",
+  age_weeks: "",
   extra_ids: [],
 });
 
@@ -38,19 +42,22 @@ function OrderCreatePage() {
   const [reps, setReps] = useState<any[]>([]);
   const [breeds, setBreeds] = useState<any[]>([]);
   const [extras, setExtras] = useState<any[]>([]);
+  const [rearers, setRearers] = useState<any[]>([]);
 
   useEffect(() => {
     async function load() {
-      const [c, r, b, e] = await Promise.all([
+      const [c, r, b, e, re] = await Promise.all([
         supabase.from("customers").select("id, company_name, customer_unique_id, rep_id").eq("is_active", true).order("company_name"),
         supabase.from("reps").select("id, name").eq("is_active", true).order("name"),
         supabase.from("breeds").select("id, breed_name").eq("is_available", true).order("breed_name"),
         supabase.from("extras").select("id, name").eq("is_available", true).order("name"),
+        supabase.from("rearers").select("id, name").eq("is_active", true).order("name"),
       ]);
       setCustomers(c.data ?? []);
       setReps(r.data ?? []);
       setBreeds(b.data ?? []);
       setExtras(e.data ?? []);
+      setRearers(re.data ?? []);
     }
     load();
   }, []);
@@ -147,9 +154,11 @@ function OrderCreatePage() {
 
     const parsedLines: OrderLineInput[] = validLines.map((l) => ({
       breed_id: l.breed_id,
+      rearer_id: l.rearer_id || null,
       quantity: parseInt(l.quantity, 10),
       price: parseFloat(l.price || "0"),
       food_clause_value: parseFloat(l.food_clause_value || "0"),
+      age_weeks: l.age_weeks ? parseInt(l.age_weeks, 10) : null,
       extra_ids: l.extra_ids,
     }));
 
@@ -257,7 +266,7 @@ function OrderCreatePage() {
                 key={idx}
                 className="border border-gray-200 rounded-lg p-4 bg-gray-50"
               >
-                <div className="grid grid-cols-5 gap-3 mb-3">
+                <div className="grid grid-cols-7 gap-3 mb-3">
                   <FormField label="Breed" required>
                     <select
                       value={line.breed_id}
@@ -268,6 +277,21 @@ function OrderCreatePage() {
                       {breeds.map((b) => (
                         <option key={b.id} value={b.id}>
                           {b.breed_name}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+
+                  <FormField label="Rearer">
+                    <select
+                      value={line.rearer_id}
+                      onChange={(e) => updateLine(idx, "rearer_id", e.target.value)}
+                      className={selectClasses}
+                    >
+                      <option value="">— Rearer —</option>
+                      {rearers.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
                         </option>
                       ))}
                     </select>
@@ -307,6 +331,17 @@ function OrderCreatePage() {
                       }
                       className={inputClasses}
                       placeholder="0.00"
+                    />
+                  </FormField>
+
+                  <FormField label="Age (weeks)">
+                    <input
+                      type="number"
+                      min="0"
+                      value={line.age_weeks}
+                      onChange={(e) => updateLine(idx, "age_weeks", e.target.value)}
+                      className={inputClasses}
+                      placeholder="e.g. 16"
                     />
                   </FormField>
 

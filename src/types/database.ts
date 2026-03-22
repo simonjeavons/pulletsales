@@ -178,9 +178,11 @@ export interface OrderLine {
   id: string;
   order_id: string;
   breed_id: string;
+  rearer_id: string | null;
   quantity: number;
   price: number;
   food_clause_value: number;
+  age_weeks: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -201,6 +203,7 @@ export interface OrderLineExtra {
 
 export interface OrderLineWithExtras extends OrderLine {
   breed?: Breed;
+  rearer?: Rearer | null;
   extras: Extra[];
 }
 
@@ -232,9 +235,11 @@ export interface DespatchLine {
   despatch_id: string;
   order_line_id: string | null;
   breed_id: string;
+  rearer_id: string | null;
   quantity: number;
   price: number;
   food_clause_value: number;
+  age_weeks: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -253,6 +258,7 @@ export interface DespatchExtra {
 
 export interface DespatchLineWithExtras extends DespatchLine {
   breed?: Breed;
+  rearer?: Rearer | null;
   extras: Extra[];
 }
 

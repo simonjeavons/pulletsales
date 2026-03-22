@@ -213,6 +213,8 @@ function OrderTab({ order }: { order: OrderWithRelations }) {
           <thead>
             <tr className="border-b border-gray-200 text-left text-gray-500 uppercase text-xs">
               <th className="pb-2">Breed</th>
+              <th className="pb-2">Rearer</th>
+              <th className="pb-2">Age (wks)</th>
               <th className="pb-2">Qty</th>
               <th className="pb-2">Price</th>
               <th className="pb-2">Food Clause</th>
@@ -224,6 +226,8 @@ function OrderTab({ order }: { order: OrderWithRelations }) {
             {order.lines.map((line) => (
               <tr key={line.id}>
                 <td className="py-3 font-medium">{line.breed?.breed_name}</td>
+                <td className="py-3">{(line as any).rearer?.name || "—"}</td>
+                <td className="py-3">{line.age_weeks ?? "—"}</td>
                 <td className="py-3">{line.quantity.toLocaleString()}</td>
                 <td className="py-3">£{Number(line.price).toFixed(2)}</td>
                 <td className="py-3">{Number(line.food_clause_value).toFixed(2)}</td>
@@ -302,11 +306,15 @@ function DespatchTab({
 
   const [deliveryDate, setDeliveryDate] = useState("");
   const [transporterId, setTransporterId] = useState("");
+  const [rearers, setRearers] = useState<any[]>([]);
   const [lines, setLines] = useState<
     Array<{
       order_line_id: string | null;
       breed_id: string;
       breed_name: string;
+      rearer_id: string;
+      rearer_name: string;
+      age_weeks: string;
       quantity: string;
       price: string;
       food_clause_value: string;
@@ -320,12 +328,14 @@ function DespatchTab({
   // Load lookups
   useEffect(() => {
     async function load() {
-      const [t, e] = await Promise.all([
+      const [t, e, r] = await Promise.all([
         supabase.from("transporters").select("id, transporter_name").eq("is_active", true).order("transporter_name"),
         supabase.from("extras").select("id, name").eq("is_available", true).order("name"),
+        supabase.from("rearers").select("id, name").eq("is_active", true).order("name"),
       ]);
       setTransporters(t.data ?? []);
       setExtras(e.data ?? []);
+      setRearers(r.data ?? []);
     }
     load();
   }, []);
@@ -347,6 +357,9 @@ function DespatchTab({
           order_line_id: l.order_line_id,
           breed_id: l.breed_id,
           breed_name: l.breed?.breed_name || "",
+          rearer_id: l.rearer_id || "",
+          rearer_name: l.rearer?.name || "",
+          age_weeks: l.age_weeks != null ? String(l.age_weeks) : "",
           quantity: String(l.quantity),
           price: String(l.price),
           food_clause_value: String(l.food_clause_value),
@@ -362,6 +375,9 @@ function DespatchTab({
           order_line_id: l.id,
           breed_id: l.breed_id,
           breed_name: l.breed?.breed_name || "",
+          rearer_id: (l as any).rearer_id || "",
+          rearer_name: (l as any).rearer?.name || "",
+          age_weeks: l.age_weeks != null ? String(l.age_weeks) : "",
           quantity: String(l.quantity),
           price: String(Number(l.price)),
           food_clause_value: String(Number(l.food_clause_value)),
@@ -436,6 +452,8 @@ function DespatchTab({
           lines: validLines.map((l) => ({
             order_line_id: l.order_line_id || null,
             breed_id: l.breed_id,
+            rearer_id: l.rearer_id || null,
+            age_weeks: l.age_weeks ? parseInt(l.age_weeks, 10) : null,
             quantity: parseInt(l.quantity, 10),
             price: parseFloat(l.price || "0"),
             food_clause_value: parseFloat(l.food_clause_value || "0"),
@@ -493,6 +511,8 @@ function DespatchTab({
               <thead>
                 <tr className="border-b text-left text-gray-500 uppercase text-xs">
                   <th className="pb-2">Breed</th>
+                  <th className="pb-2">Rearer</th>
+                  <th className="pb-2">Age (wks)</th>
                   <th className="pb-2">Qty</th>
                   <th className="pb-2">Price</th>
                   <th className="pb-2">Food Clause</th>
@@ -503,6 +523,8 @@ function DespatchTab({
                 {existingDespatch.lines.map((l: any) => (
                   <tr key={l.id}>
                     <td className="py-2 font-medium">{l.breed?.breed_name}</td>
+                    <td className="py-2">{l.rearer?.name || "—"}</td>
+                    <td className="py-2">{l.age_weeks ?? "—"}</td>
                     <td className="py-2">{l.quantity}</td>
                     <td className="py-2">£{Number(l.price).toFixed(2)}</td>
                     <td className="py-2">{Number(l.food_clause_value).toFixed(2)}</td>
@@ -576,13 +598,35 @@ function DespatchTab({
               key={idx}
               className="border border-gray-200 rounded-lg p-4 bg-gray-50"
             >
-              <div className="grid grid-cols-4 gap-3 mb-3">
+              <div className="grid grid-cols-6 gap-3 mb-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">
                     Breed
                   </label>
                   <p className="text-sm font-medium">{line.breed_name}</p>
                 </div>
+                <FormField label="Rearer">
+                  <select
+                    value={line.rearer_id}
+                    onChange={(e) => updateLine(idx, "rearer_id", e.target.value)}
+                    className={selectClasses}
+                  >
+                    <option value="">— Rearer —</option>
+                    {rearers.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Age (weeks)">
+                  <input
+                    type="number"
+                    min="0"
+                    value={line.age_weeks}
+                    onChange={(e) => updateLine(idx, "age_weeks", e.target.value)}
+                    className={inputClasses}
+                    placeholder="e.g. 16"
+                  />
+                </FormField>
                 <FormField label="Final Quantity">
                   <input
                     type="number"
