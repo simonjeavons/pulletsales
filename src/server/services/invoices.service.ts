@@ -151,6 +151,115 @@ export async function exportInvoices(invoiceIds: string[], exportedBy?: string) 
   return batch;
 }
 
+// ─── Get invoice PDF data ────────────────────────────────
+export async function getInvoicePdfData(invoiceId: string) {
+  const db = admin();
+
+  const { data: invoice } = await db
+    .from("invoices")
+    .select("*, customer:customers(*), order:orders(*, rep:reps(name), delivery_address:customer_delivery_addresses(*))")
+    .eq("id", invoiceId)
+    .single();
+
+  if (!invoice) throw new Error("Invoice not found");
+
+  // Get system settings
+  const { data: settings } = await db.from("system_settings").select("key, value");
+  const sm = Object.fromEntries((settings ?? []).map((s: any) => [s.key, s.value]));
+
+  // Get despatch + lines
+  let despatch: any = null;
+  let despatchLines: any[] = [];
+  if (invoice.order_id) {
+    const { data: d } = await db.from("despatches").select("*, transporter:transporters(transporter_name)").eq("order_id", invoice.order_id).single();
+    despatch = d;
+    if (d) {
+      const { data: dl } = await db.from("despatch_lines").select("*, breed:breeds(breed_name), rearer:rearers(name)").eq("despatch_id", d.id);
+      despatchLines = dl ?? [];
+    }
+  }
+
+  // Get VAT rate
+  const { data: vatRate } = invoice.vat_rate_id
+    ? await db.from("vat_rates").select("rate").eq("id", invoice.vat_rate_id).single()
+    : { data: null };
+  const taxRate = Number(vatRate?.rate ?? 0);
+
+  const order = invoice.order as any;
+  const customer = invoice.customer as any;
+  const repName = order?.rep?.name || "";
+  const deliveryAddr = order?.delivery_address;
+
+  // Build lines
+  const pdfLines = despatchLines.map((l: any) => {
+    const amount = l.quantity * Number(l.price);
+    const details = [
+      `${l.breed?.breed_name || "Pullets"} ${l.age_weeks ? l.age_weeks + " wks old" : ""}`.trim(),
+    ];
+    if (deliveryAddr) {
+      details.push(`Delivered to:${deliveryAddr.label || ""}`);
+      if (customer?.company_name) details.push(customer.company_name);
+      if (deliveryAddr.address_line_1) details.push(deliveryAddr.address_line_1);
+      if (deliveryAddr.address_line_2) details.push(deliveryAddr.address_line_2);
+      if (deliveryAddr.town_city) details.push(deliveryAddr.town_city + ",");
+      if (deliveryAddr.post_code) details.push(deliveryAddr.post_code);
+    }
+    return {
+      deliveryDate: despatch?.actual_delivery_date
+        ? new Date(despatch.actual_delivery_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
+        : "",
+      despatchNumber: despatch?.despatch_number || "",
+      quantity: l.quantity,
+      details,
+      price: Number(l.price),
+      taxRate,
+      amount,
+    };
+  });
+
+  // Food clause adjustment
+  const totalFoodClause = despatchLines.reduce((s: number, l: any) => {
+    return s + (l.quantity * Number(l.food_clause_value || 0));
+  }, 0);
+  const foodClausePrice = despatchLines.length > 0 ? -Number(despatchLines[0].food_clause_value || 0) : 0;
+
+  const lineTotal = pdfLines.reduce((s, l) => s + l.amount, 0);
+  const strictlyNet = lineTotal - totalFoodClause;
+  const totalVat = strictlyNet * (taxRate / 100);
+  const invoiceTotal = strictlyNet + totalVat;
+
+  const paymentTermsDays = parseInt(sm["payment_terms_days"] || "7", 10);
+  const invoiceDateObj = new Date(invoice.invoice_date);
+  const dueDate = new Date(invoiceDateObj);
+  dueDate.setDate(dueDate.getDate() + paymentTermsDays);
+
+  return {
+    invoiceNumber: invoice.invoice_number,
+    invoiceDate: invoiceDateObj.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }),
+    orderNumber: order?.order_number || "",
+    repName,
+    vatRegistration: sm["vat_registration"] || "",
+    customer: {
+      company_name: deliveryAddr?.label || customer?.company_name || "",
+      address_line_1: deliveryAddr?.address_line_1 || customer?.address_line_1 || undefined,
+      address_line_2: deliveryAddr?.address_line_2 || customer?.address_line_2 || undefined,
+      town_city: deliveryAddr?.town_city || customer?.town_city || undefined,
+      post_code: deliveryAddr?.post_code || customer?.post_code || undefined,
+    },
+    lines: pdfLines,
+    foodClauseAdjustment: foodClausePrice,
+    foodClauseTaxRate: taxRate,
+    totalVat,
+    strictlyNet,
+    invoiceTotal,
+    paymentDueDate: dueDate.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }),
+    paymentTermsDays,
+    bankName: sm["bank_name"] || "",
+    bankSortCode: sm["bank_sort_code"] || "",
+    bankAccountNo: sm["bank_account_no"] || "",
+  };
+}
+
 // ─── Generate TAS CSV data for export ────────────────────
 export async function generateInvoiceCsvData(invoiceIds: string[]) {
   const db = admin();

@@ -31,3 +31,9 @@ export const generateInvoiceCsvFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     return invoicesService.generateInvoiceCsvData(data.invoiceIds);
   });
+
+export const getInvoicePdfDataFn = createServerFn({ method: "GET" })
+  .inputValidator((data: { invoiceId: string }) => data)
+  .handler(async ({ data }) => {
+    return invoicesService.getInvoicePdfData(data.invoiceId);
+  });

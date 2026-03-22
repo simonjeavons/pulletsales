@@ -7,9 +7,13 @@ import {
   finaliseInvoiceFn,
   exportInvoicesFn,
   generateInvoiceCsvFn,
+  getInvoicePdfDataFn,
 } from "~/server/functions/invoices";
 import { listOrdersFn } from "~/server/functions/orders";
 import { createInvoiceFn } from "~/server/functions/invoices";
+import { pdf } from "@react-pdf/renderer";
+import { InvoicePdf } from "~/lib/pdf/InvoicePdf";
+import { ExportConfirmationPdf } from "~/lib/pdf/ExportConfirmationPdf";
 import { PageHeader } from "~/components/ui/PageHeader";
 import { Button } from "~/components/ui/Button";
 import { DataTable } from "~/components/ui/DataTable";
@@ -95,17 +99,24 @@ function InvoicesPage() {
     },
   });
 
-  const handleExportCsv = async () => {
-    const csvData = await generateInvoiceCsvFn({ data: { invoiceIds: selectedIds } });
-    if (!csvData || csvData.length === 0) return;
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportCsvData, setExportCsvData] = useState<any[] | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
-    // TAS format: no headers, just comma-separated values
-    // TAS format columns in order
+  const handleStartExport = async () => {
+    setExportLoading(true);
+    const csvData = await generateInvoiceCsvFn({ data: { invoiceIds: selectedIds } });
+    setExportCsvData(csvData);
+    setExportLoading(false);
+    setShowExportModal(true);
+  };
+
+  const downloadCsv = () => {
+    if (!exportCsvData || exportCsvData.length === 0) return;
     const cols = ["type", "customer_ref", "nominal", "depot", "invoice_date", "invoice_number", "details", "grand_total", "vat_code", "tax_amount"];
-    const csvContent = csvData.map((row: any) =>
+    const csvContent = exportCsvData.map((row: any) =>
       cols.map((c) => String(row[c] ?? "")).join(",")
     ).join("\n");
-
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -113,8 +124,59 @@ function InvoicesPage() {
     a.download = `invoices-export-${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
 
+  const downloadExportPdf = async () => {
+    if (!exportCsvData || exportCsvData.length === 0) return;
+    const rows = exportCsvData.map((row: any) => ({
+      invoiceNumber: row.invoice_number,
+      tradingCo: "CFP",
+      type: row.type,
+      account: row.customer_ref,
+      nominal: row.nominal,
+      dept: row.depot,
+      date: row.invoice_date,
+      ref: row.invoice_number,
+      details: row.details,
+      net: `£${Number(row.grand_total).toLocaleString("en-GB", { minimumFractionDigits: 2 })}`,
+      taxCode: row.vat_code,
+      taxAmount: `£${Number(row.tax_amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })}`,
+    }));
+    const blob = await pdf(<ExportConfirmationPdf rows={rows} />).toBlob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `SAGE_Export_Confirmation_${Date.now()}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const confirmExport = () => {
+    downloadCsv();
     exportMut.mutate({ data: { invoiceIds: selectedIds } });
+    setShowExportModal(false);
+    setExportCsvData(null);
+  };
+
+  const handlePrintInvoicePdf = async (invoiceId: string) => {
+    try {
+      const pdfData = await getInvoicePdfDataFn({ data: { invoiceId } });
+      const blob = await pdf(<InvoicePdf data={pdfData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Invoice_${pdfData.invoiceNumber}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Invoice PDF failed:", err);
+    }
+  };
+
+  const handlePrintSelectedInvoices = async () => {
+    for (const id of selectedIds) {
+      await handlePrintInvoicePdf(id);
+    }
   };
 
   const toggleSelect = (id: string) => {
@@ -145,6 +207,7 @@ function InvoicesPage() {
       key: "actions", header: "", className: "text-right",
       render: (inv: any) => (
         <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={() => handlePrintInvoicePdf(inv.id)}>📄</Button>
           {inv.status === "draft" && (
             <Button variant="ghost" size="sm" onClick={() => finaliseMut.mutate({ data: { id: inv.id } })}>Finalise</Button>
           )}
@@ -161,9 +224,14 @@ function InvoicesPage() {
         actions={
           <div className="flex gap-3">
             {selectedIds.length > 0 && (
-              <Button variant="secondary" onClick={handleExportCsv}>
-                Export {selectedIds.length} to CSV
-              </Button>
+              <>
+                <Button variant="secondary" onClick={handlePrintSelectedInvoices}>
+                  📄 Print {selectedIds.length} Invoice(s)
+                </Button>
+                <Button variant="secondary" onClick={handleStartExport} loading={exportLoading}>
+                  Export {selectedIds.length} to TAS
+                </Button>
+              </>
             )}
             <Button variant="secondary" onClick={() => setShowAdHocModal(true)}>Ad-hoc Invoice</Button>
             <Button onClick={() => setShowCreateModal(true)}>From Order</Button>
@@ -227,6 +295,38 @@ function InvoicesPage() {
         loading={adHocMut.isPending}
         vatRates={vatRates}
       />
+
+      {/* Export Modal */}
+      <Modal open={showExportModal} onClose={() => { setShowExportModal(false); setExportCsvData(null); }} title="Export to TAS" size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            {selectedIds.length} invoice(s) ready for export. Download the CSV file for TAS import and/or the confirmation report.
+          </p>
+
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={downloadCsv} className="flex-1">
+              📥 Download CSV
+            </Button>
+            <Button variant="secondary" onClick={downloadExportPdf} className="flex-1">
+              📄 Export Confirmation PDF
+            </Button>
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <p className="text-sm text-gray-500 mb-3">
+              Click "Confirm Export" to mark these invoices as exported. This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => { setShowExportModal(false); setExportCsvData(null); }}>
+                Cancel
+              </Button>
+              <Button onClick={confirmExport} loading={exportMut.isPending}>
+                Confirm Export
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
