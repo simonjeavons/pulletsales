@@ -1,0 +1,8 @@
+name = "pulletsales"
+compatibility_date = "2024-12-01"
+
+[vars]
+VITE_SUPABASE_URL = "https://hcgutuiutrbaxbndwqev.supabase.co"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjZ3V0dWl1dHJiYXhibmR3cWV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNzA5OTYsImV4cCI6MjA4OTc0Njk5Nn0.Hq7Rkp5iI2k5Y-j8-DfJ1JlxvIsSkmd-8r5sm4qixJk"
+EMAIL_FROM = "noreply@pulletsales.com"
+VITE_APP_URL = "https://pulletsales.simon-jeavons.workers.dev"
