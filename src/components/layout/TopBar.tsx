@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { logoutFn } from "~/server/functions/auth";
+import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import type { Profile } from "~/types/database";
 import { Badge } from "~/components/ui/Badge";
 
@@ -11,8 +11,9 @@ export function TopBar({ user }: TopBarProps) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logoutFn();
-    navigate({ to: "/login" });
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    window.location.href = "/login";
   };
 
   return (

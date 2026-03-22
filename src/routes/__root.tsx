@@ -4,14 +4,20 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import appCss from "~/styles/app.css?url";
 
-interface RouterContext {
-  queryClient: QueryClient;
-}
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60,
+      retry: 1,
+    },
+  },
+});
 
-export const Route = createRootRouteWithContext<RouterContext>()({
+export const Route = createRootRouteWithContext()({
   component: RootComponent,
   head: () => ({
     meta: [
@@ -20,7 +26,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { title: "Lloyds Pullet Sales" },
     ],
     links: [
-      { rel: "stylesheet", href: "/src/styles/app.css" },
+      { rel: "stylesheet", href: appCss },
     ],
   }),
 });
@@ -28,7 +34,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
     </RootDocument>
   );
 }

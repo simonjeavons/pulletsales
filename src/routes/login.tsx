@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { loginFn } from "~/server/functions/auth";
+import { createFileRoute } from "@tanstack/react-router";
+import { useRef, useState } from "react";
+import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import { Button } from "~/components/ui/Button";
 import { FormField, inputClasses } from "~/components/forms/FormField";
 import { Link } from "@tanstack/react-router";
@@ -10,23 +10,41 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    if (!email || !password) {
+      setError("Please enter your email and password");
+      setLoading(false);
+      return;
+    }
+
     try {
-      await loginFn({ data: { email, password } });
-      navigate({ to: "/dashboard" });
+      const supabase = getSupabaseBrowserClient();
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        setError(authError.message);
+        setLoading(false);
+        return;
+      }
+
+      window.location.href = "/dashboard";
     } catch (err: any) {
-      setError(err.message || "Invalid email or password");
-    } finally {
+      setError(err.message || "An unexpected error occurred");
       setLoading(false);
     }
   };
@@ -40,7 +58,7 @@ function LoginPage() {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">
                 {error}
@@ -50,8 +68,7 @@ function LoginPage() {
             <FormField label="Email" required>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                name="email"
                 className={inputClasses}
                 placeholder="you@example.com"
                 required
@@ -62,8 +79,7 @@ function LoginPage() {
             <FormField label="Password" required>
               <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                name="password"
                 className={inputClasses}
                 placeholder="Enter your password"
                 required

@@ -15,8 +15,12 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthSetPasswordRouteImport } from './routes/auth/set-password'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
+import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders/index'
+import { Route as AuthenticatedOrdersNewRouteImport } from './routes/_authenticated/orders/new'
+import { Route as AuthenticatedOrdersOrderIdRouteImport } from './routes/_authenticated/orders/$orderId'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminTransportersRouteImport } from './routes/_authenticated/admin/transporters'
 import { Route as AuthenticatedAdminRepsRouteImport } from './routes/_authenticated/admin/reps'
@@ -54,6 +58,11 @@ const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedInvoicesRoute = AuthenticatedInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -64,6 +73,23 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedOrdersIndexRoute =
+  AuthenticatedOrdersIndexRouteImport.update({
+    id: '/orders/',
+    path: '/orders/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedOrdersNewRoute = AuthenticatedOrdersNewRouteImport.update({
+  id: '/orders/new',
+  path: '/orders/new',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedOrdersOrderIdRoute =
+  AuthenticatedOrdersOrderIdRouteImport.update({
+    id: '/orders/$orderId',
+    path: '/orders/$orderId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -111,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/invoices': typeof AuthenticatedInvoicesRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/set-password': typeof AuthSetPasswordRoute
   '/admin/breeds': typeof AuthenticatedAdminBreedsRoute
@@ -120,6 +147,9 @@ export interface FileRoutesByFullPath {
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
+  '/orders/new': typeof AuthenticatedOrdersNewRoute
+  '/orders/': typeof AuthenticatedOrdersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -127,6 +157,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/invoices': typeof AuthenticatedInvoicesRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/set-password': typeof AuthSetPasswordRoute
   '/admin/breeds': typeof AuthenticatedAdminBreedsRoute
@@ -136,6 +167,9 @@ export interface FileRoutesByTo {
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
   '/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
+  '/orders/new': typeof AuthenticatedOrdersNewRoute
+  '/orders': typeof AuthenticatedOrdersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -145,6 +179,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/set-password': typeof AuthSetPasswordRoute
   '/_authenticated/admin/breeds': typeof AuthenticatedAdminBreedsRoute
@@ -154,6 +189,9 @@ export interface FileRoutesById {
   '/_authenticated/admin/reps': typeof AuthenticatedAdminRepsRoute
   '/_authenticated/admin/transporters': typeof AuthenticatedAdminTransportersRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
+  '/_authenticated/orders/new': typeof AuthenticatedOrdersNewRoute
+  '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -163,6 +201,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/dashboard'
+    | '/invoices'
     | '/auth/reset-password'
     | '/auth/set-password'
     | '/admin/breeds'
@@ -172,6 +211,9 @@ export interface FileRouteTypes {
     | '/admin/reps'
     | '/admin/transporters'
     | '/admin/users'
+    | '/orders/$orderId'
+    | '/orders/new'
+    | '/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -179,6 +221,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/dashboard'
+    | '/invoices'
     | '/auth/reset-password'
     | '/auth/set-password'
     | '/admin/breeds'
@@ -188,6 +231,9 @@ export interface FileRouteTypes {
     | '/admin/reps'
     | '/admin/transporters'
     | '/admin/users'
+    | '/orders/$orderId'
+    | '/orders/new'
+    | '/orders'
   id:
     | '__root__'
     | '/'
@@ -196,6 +242,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/invoices'
     | '/auth/reset-password'
     | '/auth/set-password'
     | '/_authenticated/admin/breeds'
@@ -205,6 +252,9 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/reps'
     | '/_authenticated/admin/transporters'
     | '/_authenticated/admin/users'
+    | '/_authenticated/orders/$orderId'
+    | '/_authenticated/orders/new'
+    | '/_authenticated/orders/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -260,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/invoices': {
+      id: '/_authenticated/invoices'
+      path: '/invoices'
+      fullPath: '/invoices'
+      preLoaderRoute: typeof AuthenticatedInvoicesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -272,6 +329,27 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/orders/': {
+      id: '/_authenticated/orders/'
+      path: '/orders'
+      fullPath: '/orders/'
+      preLoaderRoute: typeof AuthenticatedOrdersIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/orders/new': {
+      id: '/_authenticated/orders/new'
+      path: '/orders/new'
+      fullPath: '/orders/new'
+      preLoaderRoute: typeof AuthenticatedOrdersNewRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/orders/$orderId': {
+      id: '/_authenticated/orders/$orderId'
+      path: '/orders/$orderId'
+      fullPath: '/orders/$orderId'
+      preLoaderRoute: typeof AuthenticatedOrdersOrderIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/users': {
@@ -352,11 +430,19 @@ const AuthenticatedAdminRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
+  AuthenticatedOrdersOrderIdRoute: typeof AuthenticatedOrdersOrderIdRoute
+  AuthenticatedOrdersNewRoute: typeof AuthenticatedOrdersNewRoute
+  AuthenticatedOrdersIndexRoute: typeof AuthenticatedOrdersIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
+  AuthenticatedOrdersOrderIdRoute: AuthenticatedOrdersOrderIdRoute,
+  AuthenticatedOrdersNewRoute: AuthenticatedOrdersNewRoute,
+  AuthenticatedOrdersIndexRoute: AuthenticatedOrdersIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

@@ -1,11 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { getSupabaseBrowserClient } from "~/lib/supabase/client";
+import type { Profile } from "~/types/database";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
 });
 
 function DashboardPage() {
-  const { user } = Route.useRouteContext();
+  const [user, setUser] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    async function loadUser() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("auth_user_id", session.user.id)
+          .single();
+        if (data) setUser(data as Profile);
+      }
+    }
+    loadUser();
+  }, []);
+
+  if (!user) return null;
 
   const adminCards = [
     { label: "Users", to: "/admin/users", icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197", color: "bg-blue-500" },
@@ -57,7 +78,7 @@ function DashboardPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <h2 className="text-lg font-semibold text-gray-800">Welcome</h2>
           <p className="text-gray-500 mt-2">
-            Operational modules will be available in Phase 2. Please contact an administrator if you need access to setup areas.
+            Operational modules will be available in Phase 2.
           </p>
         </div>
       )}

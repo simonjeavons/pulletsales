@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { loginSchema, forgotPasswordSchema, resetPasswordSchema } from "~/lib/validation/schemas";
 import * as authService from "~/server/services/auth.service";
-import { getRequest } from "@tanstack/react-start/server";
+import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
 
 export const loginFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => loginSchema.parse(data))
@@ -11,12 +11,23 @@ export const loginFn = createServerFn({ method: "POST" })
     if (result.error) {
       throw new Error(result.error);
     }
+    // Apply Set-Cookie headers to the response
+    result.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "set-cookie") {
+        setResponseHeader("Set-Cookie", value);
+      }
+    });
     return { success: true };
   });
 
 export const logoutFn = createServerFn({ method: "POST" }).handler(async () => {
   const request = getRequest();
-  await authService.signOut(request);
+  const result = await authService.signOut(request);
+  result.headers.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie") {
+      setResponseHeader("Set-Cookie", value);
+    }
+  });
   return { success: true };
 });
 
@@ -24,7 +35,7 @@ export const forgotPasswordFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => forgotPasswordSchema.parse(data))
   .handler(async ({ data }) => {
     const request = getRequest();
-    const result = await authService.requestPasswordReset(request, data.email);
+    await authService.requestPasswordReset(request, data.email);
     // Always return success to prevent email enumeration
     return { success: true };
   });
@@ -37,6 +48,11 @@ export const resetPasswordFn = createServerFn({ method: "POST" })
     if (result.error) {
       throw new Error(result.error);
     }
+    result.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "set-cookie") {
+        setResponseHeader("Set-Cookie", value);
+      }
+    });
     return { success: true };
   });
 

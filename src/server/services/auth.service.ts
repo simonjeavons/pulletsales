@@ -88,7 +88,7 @@ export async function requestPasswordReset(request: Request, email: string) {
   const { supabase } = getSupabaseServerClient(request);
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.VITE_APP_URL}/auth/reset-password`,
+    redirectTo: `${import.meta.env.VITE_APP_URL ?? process.env.VITE_APP_URL}/auth/reset-password`,
   });
 
   // Update password_reset_requested_at
@@ -136,7 +136,7 @@ export async function inviteUser(params: {
     params.email,
     {
       data: { full_name: params.full_name },
-      redirectTo: `${process.env.VITE_APP_URL}/auth/set-password`,
+      redirectTo: `${import.meta.env.VITE_APP_URL ?? process.env.VITE_APP_URL}/auth/set-password`,
     }
   );
 
@@ -181,7 +181,7 @@ export async function resendInvite(profileId: string) {
   }
 
   const { error } = await admin.auth.admin.inviteUserByEmail(profile.email, {
-    redirectTo: `${process.env.VITE_APP_URL}/auth/set-password`,
+    redirectTo: `${import.meta.env.VITE_APP_URL ?? process.env.VITE_APP_URL}/auth/set-password`,
   });
 
   if (error) {

@@ -103,6 +103,43 @@ export const transporterSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
+// ─── Orders ──────────────────────────────────────────────
+export const orderLineSchema = z.object({
+  breed_id: z.string().uuid("Select a breed"),
+  quantity: z.number().int().positive("Quantity must be greater than 0"),
+  price: z.number().min(0, "Price cannot be negative"),
+  food_clause_value: z.number().min(0, "Food clause value cannot be negative"),
+  extra_ids: z.array(z.string().uuid()).default([]),
+});
+
+export const orderSchema = z.object({
+  customer_id: z.string().uuid("Select a customer"),
+  delivery_address_id: z.string().uuid().optional().or(z.literal("")),
+  rep_id: z.string().uuid().optional().or(z.literal("")),
+  requested_delivery_week_commencing: z.string().optional().or(z.literal("")),
+  customer_notes: z.string().max(2000).optional().or(z.literal("")),
+  internal_notes: z.string().max(2000).optional().or(z.literal("")),
+  lines: z.array(orderLineSchema).default([]),
+  extra_ids: z.array(z.string().uuid()).default([]),
+});
+
+// ─── Despatches ──────────────────────────────────────────
+export const despatchLineSchema = z.object({
+  order_line_id: z.string().uuid().optional().nullable(),
+  breed_id: z.string().uuid("Select a breed"),
+  quantity: z.number().int().positive("Quantity must be greater than 0"),
+  price: z.number().min(0, "Price cannot be negative"),
+  food_clause_value: z.number().min(0, "Food clause value cannot be negative"),
+  extra_ids: z.array(z.string().uuid()).default([]),
+});
+
+export const despatchSchema = z.object({
+  actual_delivery_date: z.string().min(1, "Delivery date is required"),
+  transporter_id: z.string().uuid("Select a transporter"),
+  lines: z.array(despatchLineSchema).min(1, "At least one line is required"),
+  extra_ids: z.array(z.string().uuid()).default([]),
+});
+
 // ─── Type exports ────────────────────────────────────────
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
@@ -115,3 +152,7 @@ export type ExtraInput = z.infer<typeof extraSchema>;
 export type BreedInput = z.infer<typeof breedSchema>;
 export type RearerInput = z.infer<typeof rearerSchema>;
 export type TransporterInput = z.infer<typeof transporterSchema>;
+export type OrderInput = z.infer<typeof orderSchema>;
+export type OrderLineInput = z.infer<typeof orderLineSchema>;
+export type DespatchInput = z.infer<typeof despatchSchema>;
+export type DespatchLineInput = z.infer<typeof despatchLineSchema>;

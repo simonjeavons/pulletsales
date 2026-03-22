@@ -147,6 +147,168 @@ export interface Transporter {
 export type TransporterInsert = Omit<Transporter, "id" | "created_at" | "updated_at">;
 export type TransporterUpdate = Partial<Omit<Transporter, "id" | "created_at">>;
 
+// ─── Orders ──────────────────────────────────────────────
+export type OrderStatus =
+  | "draft"
+  | "confirmed"
+  | "pending_despatch"
+  | "ready_for_despatch"
+  | "completed"
+  | "cancelled"
+  | "invoiced";
+
+export interface Order {
+  id: string;
+  order_number: string;
+  customer_id: string;
+  delivery_address_id: string | null;
+  rep_id: string | null;
+  requested_delivery_week_commencing: string | null;
+  status: OrderStatus;
+  customer_notes: string | null;
+  internal_notes: string | null;
+  confirmation_pdf_url: string | null;
+  confirmed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderLine {
+  id: string;
+  order_id: string;
+  breed_id: string;
+  quantity: number;
+  price: number;
+  food_clause_value: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderExtra {
+  id: string;
+  order_id: string;
+  extra_id: string;
+  created_at: string;
+}
+
+export interface OrderLineExtra {
+  id: string;
+  order_line_id: string;
+  extra_id: string;
+  created_at: string;
+}
+
+export interface OrderLineWithExtras extends OrderLine {
+  breed?: Breed;
+  extras: Extra[];
+}
+
+export interface OrderWithRelations extends Order {
+  customer?: Customer;
+  delivery_address?: DeliveryAddress | null;
+  rep?: Rep | null;
+  lines: OrderLineWithExtras[];
+  extras: Extra[];
+  despatch?: Despatch | null;
+}
+
+// ─── Despatches ──────────────────────────────────────────
+export interface Despatch {
+  id: string;
+  order_id: string;
+  actual_delivery_date: string | null;
+  transporter_id: string | null;
+  delivery_advice_pdf_url: string | null;
+  despatch_note_pdf_url: string | null;
+  completed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DespatchLine {
+  id: string;
+  despatch_id: string;
+  order_line_id: string | null;
+  breed_id: string;
+  quantity: number;
+  price: number;
+  food_clause_value: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DespatchLineExtra {
+  id: string;
+  despatch_line_id: string;
+  extra_id: string;
+}
+
+export interface DespatchExtra {
+  id: string;
+  despatch_id: string;
+  extra_id: string;
+}
+
+export interface DespatchLineWithExtras extends DespatchLine {
+  breed?: Breed;
+  extras: Extra[];
+}
+
+export interface DespatchWithRelations extends Despatch {
+  transporter?: Transporter | null;
+  lines: DespatchLineWithExtras[];
+  extras: Extra[];
+}
+
+// ─── Invoices ────────────────────────────────────────────
+export type InvoiceStatus = "draft" | "finalised" | "exported" | "void";
+export type ExportStatus = "pending" | "exported" | "failed";
+
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  order_id: string;
+  customer_id: string;
+  invoice_date: string;
+  status: InvoiceStatus;
+  export_status: ExportStatus;
+  export_batch_reference: string | null;
+  exported_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceExport {
+  id: string;
+  batch_reference: string;
+  exported_by: string | null;
+  exported_at: string;
+  file_name: string | null;
+  status: ExportStatus;
+  created_at: string;
+}
+
+export interface InvoiceExportItem {
+  id: string;
+  invoice_export_id: string;
+  invoice_id: string;
+}
+
+export interface InvoiceWithRelations extends Invoice {
+  order?: Order;
+  customer?: Customer;
+}
+
+// ─── Order List Filters ──────────────────────────────────
+export interface OrderListFilters extends ListFilters {
+  status?: OrderStatus;
+  customer_id?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
 // ─── API Response Types ──────────────────────────────────
 export interface PaginatedResponse<T> {
   data: T[];
