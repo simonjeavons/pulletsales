@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import type { Profile } from "~/types/database";
 import { Badge } from "~/components/ui/Badge";
@@ -8,8 +7,6 @@ interface TopBarProps {
 }
 
 export function TopBar({ user }: TopBarProps) {
-  const navigate = useNavigate();
-
   const handleLogout = async () => {
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
@@ -17,12 +14,12 @@ export function TopBar({ user }: TopBarProps) {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+    <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
       <div />
       <div className="flex items-center gap-4">
         <div className="text-right">
           <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-          <Badge variant={user.role === "admin" ? "info" : "neutral"}>
+          <Badge variant={user.role === "admin" ? "warning" : "neutral"}>
             {user.role === "admin" ? "Admin" : "User"}
           </Badge>
         </div>
