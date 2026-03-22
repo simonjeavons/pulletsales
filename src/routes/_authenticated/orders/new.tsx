@@ -106,16 +106,6 @@ function OrderCreatePage() {
     setLines((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const toggleLineExtra = (idx: number, extraId: string) => {
-    setLines((prev) =>
-      prev.map((l, i) =>
-        i === idx
-          ? { ...l, extra_ids: l.extra_ids.includes(extraId) ? l.extra_ids.filter((id) => id !== extraId) : [...l.extra_ids, extraId] }
-          : l
-      )
-    );
-  };
-
   const toggleOrderExtra = (extraId: string) => {
     setOrderExtraIds((prev) => prev.includes(extraId) ? prev.filter((id) => id !== extraId) : [...prev, extraId]);
   };
@@ -370,27 +360,6 @@ function OrderCreatePage() {
             </table>
           </div>
 
-          {/* Line extras — compact toggle row per line that has a breed selected */}
-          {lines.some((l) => l.breed_id) && extras.length > 0 && (
-            <div className="border-t border-gray-100 px-5 py-3">
-              <p className="text-xs font-medium text-gray-500 uppercase mb-2">Line Extras</p>
-              {lines.map((line, idx) => {
-                if (!line.breed_id) return null;
-                const breedName = breeds.find((b) => b.id === line.breed_id)?.breed_name || "";
-                return (
-                  <div key={idx} className="flex items-center gap-3 py-1 text-xs">
-                    <span className="text-gray-500 w-28 flex-shrink-0 font-medium">Line {idx + 1} ({breedName})</span>
-                    {extras.map((ex) => (
-                      <label key={ex.id} className="flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900">
-                        <input type="checkbox" checked={line.extra_ids.includes(ex.id)} onChange={() => toggleLineExtra(idx, ex.id)} className="h-3 w-3 rounded border-gray-300 text-brand-500" />
-                        {ex.name}
-                      </label>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* ─── Order Extras + Notes (compact row) ────────── */}
