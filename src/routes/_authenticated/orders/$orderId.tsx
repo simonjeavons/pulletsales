@@ -643,6 +643,11 @@ function DespatchTab({
             </table>
           </div>
         )}
+
+        {/* PDF buttons for completed orders */}
+        {existingDespatch && (
+          <CompletedPdfButtons order={order} despatch={existingDespatch} />
+        )}
       </div>
     );
   }
@@ -1013,4 +1018,106 @@ function DespatchTab({
       `Salmonella_Form_${desp.despatch_number || order.order_number}.pdf`
     );
   }
+}
+
+// ─── PDF buttons for completed orders (uses despatch data directly) ──
+function CompletedPdfButtons({ order, despatch }: { order: OrderWithRelations; despatch: any }) {
+  const repName = order.rep?.name || "";
+  const dLines = despatch.lines || [];
+  const totalQty = dLines.reduce((s: number, l: any) => s + (l.quantity || 0), 0);
+  const firstBreed = dLines[0]?.breed?.breed_name || "Pullets";
+  const firstAge = dLines[0]?.age_weeks ?? null;
+  const firstRearer = dLines[0]?.rearer?.name || "";
+  const transporterName = despatch.transporter?.transporter_name || "";
+  const dExtras = (despatch.extras || []).map((e: any) => e.name);
+
+  const wcDate = order.requested_delivery_week_commencing
+    ? new Date(order.requested_delivery_week_commencing).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : "TBC";
+  const delivDateFormatted = despatch.actual_delivery_date
+    ? new Date(despatch.actual_delivery_date).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })
+    : "TBC";
+  const advDateFormatted = despatch.advice_date
+    ? new Date(despatch.advice_date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
+    : new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+
+  const genAdvice = () => downloadPdf(
+    <DeliveryAdvicePdf data={{
+      date: advDateFormatted,
+      orderNumber: order.order_number,
+      repName,
+      customer: {
+        company_name: order.customer?.company_name || "",
+        address_line_1: order.customer?.address_line_1 || undefined,
+        town_city: order.customer?.town_city || undefined,
+        post_code: order.customer?.post_code || undefined,
+      },
+      totalQuantity: totalQty,
+      breed: firstBreed,
+      age: firstAge,
+      weekCommencing: wcDate,
+      lines: dLines.map((l: any) => ({
+        deliveryDate: delivDateFormatted,
+        quantity: l.quantity,
+        breed: l.breed?.breed_name || "",
+        transporter: transporterName,
+        unloadingTime: despatch.proposed_unloading_time || "TBC",
+        deliveryTo: {
+          name: order.delivery_address?.label || order.customer?.company_name || "",
+          address_line_1: order.delivery_address?.address_line_1 || order.customer?.address_line_1 || undefined,
+          town_city: order.delivery_address?.town_city || order.customer?.town_city || undefined,
+          post_code: order.delivery_address?.post_code || order.customer?.post_code || undefined,
+        },
+      })),
+      extras: dExtras,
+    }} />,
+    `Delivery_Advice_${order.order_number}.pdf`
+  );
+
+  const genDespatch = () => downloadPdf(
+    <DespatchNotePdf data={{
+      despatchNumber: despatch.despatch_number || "",
+      orderNumber: order.order_number,
+      repName,
+      customer: {
+        company_name: order.delivery_address?.label || order.customer?.company_name || "",
+        address_line_1: order.delivery_address?.address_line_1 || order.customer?.address_line_1 || undefined,
+        town_city: order.delivery_address?.town_city || order.customer?.town_city || undefined,
+        post_code: order.delivery_address?.post_code || order.customer?.post_code || undefined,
+      },
+      rearerName: firstRearer,
+      quantity: dLines[0]?.quantity || 0,
+      totalPullets: totalQty,
+      breed: firstBreed,
+      age: firstAge,
+      deliveryDate: delivDateFormatted,
+      unloadingTime: despatch.proposed_unloading_time || "TBC",
+      transporter: transporterName,
+      extras: dExtras,
+    }} />,
+    `Despatch_Note_${despatch.despatch_number || order.order_number}.pdf`
+  );
+
+  const genSalmonella = () => downloadPdf(
+    <SalmonellaFormPdf data={{
+      despatchNumber: despatch.despatch_number || "",
+      rearerName: firstRearer,
+      customerName: order.customer?.company_name || "",
+      customerPostCode: order.customer?.post_code || order.delivery_address?.post_code || "",
+      transporter: transporterName,
+      age: firstAge,
+      deliveryDate: despatch.actual_delivery_date
+        ? new Date(despatch.actual_delivery_date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
+        : "",
+    }} />,
+    `Salmonella_Form_${despatch.despatch_number || order.order_number}.pdf`
+  );
+
+  return (
+    <div className="flex gap-3 flex-wrap">
+      <Button variant="secondary" size="sm" onClick={genAdvice}>📄 Delivery Advice</Button>
+      <Button variant="secondary" size="sm" onClick={genDespatch}>📄 Despatch Note</Button>
+      <Button variant="secondary" size="sm" onClick={genSalmonella}>📄 Salmonella Form</Button>
+    </div>
+  );
 }
