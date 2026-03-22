@@ -23,7 +23,7 @@ import { Modal } from "~/components/ui/Modal";
 import { FormField, inputClasses, selectClasses } from "~/components/forms/FormField";
 import type { InvoiceStatus, InvoiceWithRelations, VatRate } from "~/types/database";
 
-export const Route = createFileRoute("/_authenticated/invoices")({
+export const Route = createFileRoute("/_authenticated/invoices/")({
   component: InvoicesPage,
 });
 
@@ -200,10 +200,7 @@ function InvoicesPage() {
     {
       key: "status", header: "Status",
       render: (inv: any) => (
-        <div className="flex gap-1">
-          <Badge variant={statusColors[inv.status as InvoiceStatus]}>{inv.status}</Badge>
-          {inv.exported_at && <Badge variant="success">Exported</Badge>}
-        </div>
+        <Badge variant={statusColors[inv.status as InvoiceStatus]}>{inv.status}</Badge>
       ),
     },
     {
