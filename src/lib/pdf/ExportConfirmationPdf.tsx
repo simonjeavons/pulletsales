@@ -47,7 +47,7 @@ export function ExportConfirmationPdf({ rows }: { rows: ExportRow[] }) {
     <Document>
       {pages.map((pageRows, pageIdx) => (
         <Page key={pageIdx} size="A4" orientation="landscape" style={s.page}>
-          <Text style={s.title}>SAGE Pending - Export File</Text>
+          <Text style={s.title}>TAS Pending - Export File</Text>
 
           <View style={s.tableHeader}>
             <Text style={s.colInv}>Invoice{"\n"}No.</Text>
