@@ -14,7 +14,7 @@ interface DashboardData {
   ordersByMonth: Array<{ month: string; count: number; value: number }>;
   topReps: Array<{ name: string; count: number; value: number }>;
   topCustomers: Array<{ name: string; count: number; value: number }>;
-  topRearers: Array<{ name: string; count: number }>;
+  topBreeds: Array<{ name: string; count: number; qty: number }>;
   recentOrders: any[];
   totalActiveCustomers: number;
   totalActiveBreeds: number;
@@ -114,16 +114,18 @@ function DashboardPage() {
         .sort((a, b) => b.value - a.value)
         .slice(0, 5);
 
-      // Top rearers
-      const rearerCounts: Record<string, number> = {};
-      (orderLines ?? []).filter((l) => l.rearer_id).forEach((l) => {
-        rearerCounts[l.rearer_id] = (rearerCounts[l.rearer_id] || 0) + 1;
+      // Top breeds
+      const breedCounts: Record<string, { count: number; qty: number }> = {};
+      (orderLines ?? []).forEach((l: any) => {
+        if (!breedCounts[l.breed_id]) breedCounts[l.breed_id] = { count: 0, qty: 0 };
+        breedCounts[l.breed_id].count++;
+        breedCounts[l.breed_id].qty += l.quantity || 0;
       });
-      const { data: rearersList } = await supabase.from("rearers").select("id, name");
-      const rearerMap = Object.fromEntries((rearersList ?? []).map((r) => [r.id, r.name]));
-      const topRearers = Object.entries(rearerCounts)
-        .map(([id, count]) => ({ name: rearerMap[id] || "Unknown", count }))
-        .sort((a, b) => b.count - a.count)
+      const { data: breedsList } = await supabase.from("breeds").select("id, breed_name");
+      const breedMap = Object.fromEntries((breedsList ?? []).map((b) => [b.id, b.breed_name]));
+      const topBreeds = Object.entries(breedCounts)
+        .map(([id, d]) => ({ name: breedMap[id] || "Unknown", count: d.count, qty: d.qty }))
+        .sort((a, b) => b.qty - a.qty)
         .slice(0, 5);
 
       // Recent orders
@@ -145,7 +147,7 @@ function DashboardPage() {
         ordersByMonth,
         topReps,
         topCustomers,
-        topRearers,
+        topBreeds,
         recentOrders: recentOrders ?? [],
         totalActiveCustomers: activeCustomers ?? 0,
         totalActiveBreeds: activeBreeds ?? 0,
@@ -267,8 +269,8 @@ function DashboardPage() {
         {/* ─── Top Customers ────────────────────────────── */}
         <LeaderboardCard title="Top Customers" items={data.topCustomers} showValue />
 
-        {/* ─── Top Rearers ──────────────────────────────── */}
-        <LeaderboardCard title="Top Rearers" items={data.topRearers.map((r) => ({ ...r, value: r.count }))} valueLabel="lines" />
+        {/* ─── Top Breeds ───────────────────────────────── */}
+        <LeaderboardCard title="Top Breeds" items={data.topBreeds.map((b) => ({ ...b, value: b.qty }))} valueLabel="pullets" />
       </div>
     </div>
   );
