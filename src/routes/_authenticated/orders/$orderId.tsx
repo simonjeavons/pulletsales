@@ -18,6 +18,7 @@ import {
   inputClasses,
   selectClasses,
   checkboxClasses,
+  textareaClasses,
 } from "~/components/forms/FormField";
 import type { OrderStatus, OrderWithRelations } from "~/types/database";
 import type { DespatchLineInput } from "~/lib/validation/schemas";
@@ -310,6 +311,11 @@ function DespatchTab({
   const [deliveryDate, setDeliveryDate] = useState("");
   const [unloadingTime, setUnloadingTime] = useState("");
   const [transporterId, setTransporterId] = useState("");
+  const [adviceSalutation, setAdviceSalutation] = useState("");
+  const [adviceBody, setAdviceBody] = useState("");
+  const [adviceDate, setAdviceDate] = useState("");
+  const [isDeliveryAmended, setIsDeliveryAmended] = useState(false);
+  const [despatchNotes, setDespatchNotes] = useState("");
   const [rearers, setRearers] = useState<any[]>([]);
   const [lines, setLines] = useState<
     Array<{
@@ -357,6 +363,11 @@ function DespatchTab({
       setDeliveryDate(existingDespatch.actual_delivery_date || "");
       setUnloadingTime(existingDespatch.proposed_unloading_time || "");
       setTransporterId(existingDespatch.transporter_id || "");
+      setAdviceSalutation(existingDespatch.advice_salutation || "");
+      setAdviceBody(existingDespatch.advice_body || "");
+      setAdviceDate(existingDespatch.advice_date || "");
+      setIsDeliveryAmended(existingDespatch.is_delivery_amended || false);
+      setDespatchNotes(existingDespatch.despatch_notes || "");
       setLines(
         existingDespatch.lines.map((l: any) => ({
           order_line_id: l.order_line_id,
@@ -390,6 +401,20 @@ function DespatchTab({
         }))
       );
       setDespatchExtraIds(order.extras.map((e) => e.id));
+
+      // Auto-populate advice text with placeholders
+      const totalQty = order.lines.reduce((s, l) => s + l.quantity, 0);
+      const firstBreed = order.lines[0]?.breed?.breed_name || "pullets";
+      const firstAge = order.lines[0]?.age_weeks;
+      const wcDate = order.requested_delivery_week_commencing
+        ? new Date(order.requested_delivery_week_commencing).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+        : "TBC";
+
+      setAdviceSalutation(`Dear Sir/Madam`);
+      setAdviceBody(
+        `With further reference to your order for ${totalQty.toLocaleString()} pullets to be supplied during the week commencing ${wcDate}${firstAge ? ` at ${firstAge} weeks old` : ""}.\n\nWe have pleasure in advising you that delivery has been arranged as follows:`
+      );
+      setAdviceDate(new Date().toISOString().split("T")[0]);
       setInitialized(true);
     }
   }, [existingDespatch, order, initialized]);
@@ -455,6 +480,11 @@ function DespatchTab({
           actual_delivery_date: deliveryDate,
           proposed_unloading_time: unloadingTime || undefined,
           transporter_id: transporterId,
+          advice_salutation: adviceSalutation || undefined,
+          advice_body: adviceBody || undefined,
+          advice_date: adviceDate || undefined,
+          is_delivery_amended: isDeliveryAmended,
+          despatch_notes: despatchNotes || undefined,
           lines: validLines.map((l) => ({
             order_line_id: l.order_line_id || null,
             breed_id: l.breed_id,
@@ -594,6 +624,36 @@ function DespatchTab({
             </select>
           </FormField>
         </div>
+      </div>
+
+      {/* Delivery Advice Text */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Delivery Advice Text
+        </h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Edit the salutation and body text that will appear on the Delivery Advice PDF. Placeholders are auto-filled from order data.
+        </p>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <FormField label="Advice Date">
+            <input type="date" value={adviceDate} onChange={(e) => setAdviceDate(e.target.value)} className={inputClasses} />
+          </FormField>
+          <div className="flex items-end gap-4">
+            <label className="flex items-center gap-2 text-sm pb-2">
+              <input type="checkbox" checked={isDeliveryAmended} onChange={(e) => setIsDeliveryAmended(e.target.checked)} className={checkboxClasses} />
+              Delivery Amended
+            </label>
+          </div>
+        </div>
+        <FormField label="Salutation" className="mb-4">
+          <input type="text" value={adviceSalutation} onChange={(e) => setAdviceSalutation(e.target.value)} className={inputClasses} placeholder="e.g. Dear Mr. Smith" />
+        </FormField>
+        <FormField label="Body Text">
+          <textarea value={adviceBody} onChange={(e) => setAdviceBody(e.target.value)} className={textareaClasses} rows={4} placeholder="With further reference to your order..." />
+        </FormField>
+        <FormField label="Despatch Notes" className="mt-4">
+          <textarea value={despatchNotes} onChange={(e) => setDespatchNotes(e.target.value)} className={textareaClasses} rows={2} placeholder="Additional notes for the despatch..." />
+        </FormField>
       </div>
 
       {/* Despatch Lines */}

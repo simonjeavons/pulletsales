@@ -227,6 +227,11 @@ export interface Despatch {
   actual_delivery_date: string | null;
   proposed_unloading_time: string | null;
   transporter_id: string | null;
+  advice_salutation: string | null;
+  advice_body: string | null;
+  advice_date: string | null;
+  is_delivery_amended: boolean;
+  despatch_notes: string | null;
   delivery_advice_pdf_url: string | null;
   despatch_note_pdf_url: string | null;
   completed_at: string | null;

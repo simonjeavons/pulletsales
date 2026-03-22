@@ -89,6 +89,11 @@ export async function saveDespatch(orderId: string, input: DespatchInput, create
         actual_delivery_date: input.actual_delivery_date,
         proposed_unloading_time: input.proposed_unloading_time || null,
         transporter_id: input.transporter_id,
+        advice_salutation: input.advice_salutation || null,
+        advice_body: input.advice_body || null,
+        advice_date: input.advice_date || null,
+        is_delivery_amended: input.is_delivery_amended || false,
+        despatch_notes: input.despatch_notes || null,
       })
       .eq("id", existing.id);
 
@@ -113,6 +118,11 @@ export async function saveDespatch(orderId: string, input: DespatchInput, create
         actual_delivery_date: input.actual_delivery_date,
         proposed_unloading_time: input.proposed_unloading_time || null,
         transporter_id: input.transporter_id,
+        advice_salutation: input.advice_salutation || null,
+        advice_body: input.advice_body || null,
+        advice_date: input.advice_date || null,
+        is_delivery_amended: input.is_delivery_amended || false,
+        despatch_notes: input.despatch_notes || null,
         created_by: createdBy || null,
       })
       .select()
