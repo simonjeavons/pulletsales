@@ -54,6 +54,20 @@ const statusLabels: Record<OrderStatus, string> = {
   invoiced: "Invoiced",
 };
 
+async function downloadPdf(element: React.ReactElement, filename: string) {
+  try {
+    const blob = await pdf(element).toBlob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("PDF generation failed:", err);
+  }
+}
+
 function OrderDetailPage() {
   const { orderId } = Route.useParams();
   const qc = useQueryClient();
@@ -92,20 +106,6 @@ function OrderDetailPage() {
   const canCancel = ["draft", "confirmed", "amended"].includes(order.status);
   const isAmended = order.status === "amended";
   const canGenerateConfirmationPdf = ["confirmed", "amended"].includes(order.status);
-
-  const downloadPdf = async (element: React.ReactElement, filename: string) => {
-    try {
-      const blob = await pdf(element).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("PDF generation failed:", err);
-    }
-  };
 
   const handleOrderConfirmationPdf = () => {
     const repName = order.rep?.name || "";
@@ -855,7 +855,7 @@ function DespatchTab({
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
         <Button onClick={handleSave} loading={saveMut.isPending}>
           Save Despatch
         </Button>
@@ -867,7 +867,150 @@ function DespatchTab({
         >
           Mark Completed
         </Button>
+
+        {/* PDF buttons — only show after despatch is saved */}
+        {existingDespatch && (
+          <>
+            <div className="border-l border-gray-300 mx-1" />
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleDeliveryAdvicePdf(existingDespatch)}
+            >
+              📄 Delivery Advice
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleDespatchNotePdf(existingDespatch)}
+            >
+              📄 Despatch Note
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleSalmonellaFormPdf(existingDespatch)}
+            >
+              📄 Salmonella Form
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
+
+  // ─── PDF handlers ──────────────────────────────────────
+  function handleDeliveryAdvicePdf(desp: any) {
+    const repName = order.rep?.name || "";
+    const totalQty = lines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0);
+    const firstBreed = lines[0]?.breed_name || "Pullets";
+    const firstAge = lines[0]?.age_weeks ? parseInt(lines[0].age_weeks, 10) : null;
+    const wcDate = order.requested_delivery_week_commencing
+      ? new Date(order.requested_delivery_week_commencing).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+      : "TBC";
+    const advDateFormatted = adviceDate
+      ? new Date(adviceDate).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
+      : new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+    const delivDateFormatted = deliveryDate
+      ? new Date(deliveryDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })
+      : "TBC";
+    const transporterName = transporters.find((t) => t.id === transporterId)?.transporter_name || "";
+
+    const pdfTitle = isDeliveryAmended ? "AMENDED DELIVERY ADVICE" : "DELIVERY ADVICE";
+
+    downloadPdf(
+      <DeliveryAdvicePdf data={{
+        date: advDateFormatted,
+        orderNumber: order.order_number,
+        repName,
+        customer: {
+          company_name: order.customer?.company_name || "",
+          address_line_1: order.customer?.address_line_1 || undefined,
+          address_line_2: order.customer?.address_line_2 || undefined,
+          town_city: order.customer?.town_city || undefined,
+          post_code: order.customer?.post_code || undefined,
+        },
+        totalQuantity: totalQty,
+        breed: firstBreed,
+        age: firstAge,
+        weekCommencing: wcDate,
+        lines: lines.map((l) => ({
+          deliveryDate: delivDateFormatted,
+          quantity: parseInt(l.quantity || "0", 10),
+          breed: l.breed_name,
+          transporter: transporterName,
+          unloadingTime: unloadingTime || "TBC",
+          deliveryTo: {
+            name: order.delivery_address?.label || order.customer?.company_name || "",
+            address_line_1: order.delivery_address?.address_line_1 || order.customer?.address_line_1 || undefined,
+            address_line_2: order.delivery_address?.address_line_2 || undefined,
+            town_city: order.delivery_address?.town_city || order.customer?.town_city || undefined,
+            post_code: order.delivery_address?.post_code || order.customer?.post_code || undefined,
+          },
+        })),
+        extras: extras.filter((e) => despatchExtraIds.includes(e.id)).map((e) => e.name),
+      }} />,
+      `Delivery_Advice_${order.order_number}.pdf`
+    );
+  }
+
+  function handleDespatchNotePdf(desp: any) {
+    const repName = order.rep?.name || "";
+    const totalQty = lines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0);
+    const firstBreed = lines[0]?.breed_name || "Pullets";
+    const firstAge = lines[0]?.age_weeks ? parseInt(lines[0].age_weeks, 10) : null;
+    const firstRearer = lines[0]?.rearer_id ? rearers.find((r) => r.id === lines[0].rearer_id)?.name || "" : "";
+    const transporterName = transporters.find((t) => t.id === transporterId)?.transporter_name || "";
+    const delivDateFormatted = deliveryDate
+      ? new Date(deliveryDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })
+      : "TBC";
+
+    downloadPdf(
+      <DespatchNotePdf data={{
+        despatchNumber: desp.despatch_number || "",
+        orderNumber: order.order_number,
+        repName,
+        customer: {
+          company_name: order.delivery_address?.label || order.customer?.company_name || "",
+          address_line_1: order.delivery_address?.address_line_1 || order.customer?.address_line_1 || undefined,
+          address_line_2: order.delivery_address?.address_line_2 || undefined,
+          town_city: order.delivery_address?.town_city || order.customer?.town_city || undefined,
+          post_code: order.delivery_address?.post_code || order.customer?.post_code || undefined,
+          phone: undefined,
+        },
+        rearerName: firstRearer,
+        quantity: parseInt(lines[0]?.quantity || "0", 10),
+        totalPullets: totalQty,
+        breed: firstBreed,
+        age: firstAge,
+        deliveryDate: delivDateFormatted,
+        unloadingTime: unloadingTime || "TBC",
+        transporter: transporterName,
+        extras: extras.filter((e) => despatchExtraIds.includes(e.id)).map((e) => e.name),
+      }} />,
+      `Despatch_Note_${desp.despatch_number || order.order_number}.pdf`
+    );
+  }
+
+  function handleSalmonellaFormPdf(desp: any) {
+    const firstRearer = lines[0]?.rearer_id ? rearers.find((r) => r.id === lines[0].rearer_id)?.name || "" : "";
+    const firstAge = lines[0]?.age_weeks ? parseInt(lines[0].age_weeks, 10) : null;
+    const transporterName = transporters.find((t) => t.id === transporterId)?.transporter_name || "";
+    const delivDateFormatted = deliveryDate
+      ? new Date(deliveryDate + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
+      : "";
+
+    downloadPdf(
+      <SalmonellaFormPdf data={{
+        despatchNumber: desp.despatch_number || "",
+        rearerName: firstRearer,
+        customerName: order.customer?.company_name || "",
+        customerPostCode: order.customer?.post_code || order.delivery_address?.post_code || "",
+        transporter: transporterName,
+        age: firstAge,
+        deliveryDate: delivDateFormatted,
+      }} />,
+      `Salmonella_Form_${desp.despatch_number || order.order_number}.pdf`
+    );
+  }
 }

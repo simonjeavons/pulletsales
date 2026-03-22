@@ -56,7 +56,7 @@ function DashboardPage() {
 
       // Orders by status
       const { data: orders } = await supabase.from("orders").select("id, status, customer_id, rep_id, created_at, requested_delivery_week_commencing");
-      const { data: orderLines } = await supabase.from("order_lines").select("order_id, quantity, price, rearer_id");
+      const { data: orderLines } = await supabase.from("order_lines").select("order_id, breed_id, quantity, price, rearer_id, breed:breeds(breed_name)");
 
       // Build order value map
       const orderValueMap: Record<string, number> = {};
@@ -114,17 +114,15 @@ function DashboardPage() {
         .sort((a, b) => b.value - a.value)
         .slice(0, 5);
 
-      // Top breeds
-      const breedCounts: Record<string, { count: number; qty: number }> = {};
+      // Top breeds — use joined breed name from order_lines
+      const breedCounts: Record<string, { name: string; count: number; qty: number }> = {};
       (orderLines ?? []).forEach((l: any) => {
-        if (!breedCounts[l.breed_id]) breedCounts[l.breed_id] = { count: 0, qty: 0 };
-        breedCounts[l.breed_id].count++;
-        breedCounts[l.breed_id].qty += l.quantity || 0;
+        const breedName = l.breed?.breed_name || "Unknown";
+        if (!breedCounts[breedName]) breedCounts[breedName] = { name: breedName, count: 0, qty: 0 };
+        breedCounts[breedName].count++;
+        breedCounts[breedName].qty += l.quantity || 0;
       });
-      const { data: breedsList } = await supabase.from("breeds").select("id, breed_name");
-      const breedMap = Object.fromEntries((breedsList ?? []).map((b) => [b.id, b.breed_name]));
-      const topBreeds = Object.entries(breedCounts)
-        .map(([id, d]) => ({ name: breedMap[id] || "Unknown", count: d.count, qty: d.qty }))
+      const topBreeds = Object.values(breedCounts)
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 5);
 
@@ -270,7 +268,7 @@ function DashboardPage() {
         <LeaderboardCard title="Top Customers" items={data.topCustomers} showValue />
 
         {/* ─── Top Breeds ───────────────────────────────── */}
-        <LeaderboardCard title="Top Breeds" items={data.topBreeds.map((b) => ({ ...b, value: b.qty }))} valueLabel="pullets" />
+        <LeaderboardCard title="Top Breeds" items={data.topBreeds.map((b) => ({ name: b.name, count: b.qty, value: b.qty }))} valueLabel="pullets" />
       </div>
     </div>
   );
