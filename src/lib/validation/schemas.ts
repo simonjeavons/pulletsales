@@ -108,7 +108,7 @@ export const orderLineSchema = z.object({
   breed_id: z.string().uuid("Select a breed"),
   quantity: z.number().int().positive("Quantity must be greater than 0"),
   price: z.number().min(0, "Price cannot be negative"),
-  food_clause_value: z.number().min(0, "Food clause value cannot be negative"),
+  food_clause_value: z.number().min(0, "Food clause cannot be negative"),
   extra_ids: z.array(z.string().uuid()).default([]),
 });
 
@@ -129,7 +129,7 @@ export const despatchLineSchema = z.object({
   breed_id: z.string().uuid("Select a breed"),
   quantity: z.number().int().positive("Quantity must be greater than 0"),
   price: z.number().min(0, "Price cannot be negative"),
-  food_clause_value: z.number().min(0, "Food clause value cannot be negative"),
+  food_clause_value: z.number().min(0, "Food clause cannot be negative"),
   extra_ids: z.array(z.string().uuid()).default([]),
 });
 

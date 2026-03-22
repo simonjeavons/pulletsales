@@ -63,7 +63,8 @@ function OrderDetailPage() {
   const transitionMut = useMutation({
     mutationFn: transitionOrderFn,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["order", orderId] });
+      qc.invalidateQueries({ queryKey: ["order", orderId], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["orders"], refetchType: "all" });
       setConfirmAction(null);
     },
   });
@@ -225,7 +226,7 @@ function OrderTab({ order }: { order: OrderWithRelations }) {
                 <td className="py-3 font-medium">{line.breed?.breed_name}</td>
                 <td className="py-3">{line.quantity.toLocaleString()}</td>
                 <td className="py-3">£{Number(line.price).toFixed(2)}</td>
-                <td className="py-3">{Number(line.food_clause_value).toFixed(4)}</td>
+                <td className="py-3">{Number(line.food_clause_value).toFixed(2)}</td>
                 <td className="py-3 font-medium">
                   £{(line.quantity * Number(line.price)).toFixed(2)}
                 </td>
@@ -504,7 +505,7 @@ function DespatchTab({
                     <td className="py-2 font-medium">{l.breed?.breed_name}</td>
                     <td className="py-2">{l.quantity}</td>
                     <td className="py-2">£{Number(l.price).toFixed(2)}</td>
-                    <td className="py-2">{Number(l.food_clause_value).toFixed(4)}</td>
+                    <td className="py-2">{Number(l.food_clause_value).toFixed(2)}</td>
                     <td className="py-2">
                       {l.extras?.length > 0
                         ? l.extras.map((e: any) => e.name).join(", ")
@@ -604,7 +605,7 @@ function DespatchTab({
                 <FormField label="Final Food Clause">
                   <input
                     type="number"
-                    step="0.0001"
+                    step="0.01"
                     min="0"
                     value={line.food_clause_value}
                     onChange={(e) =>

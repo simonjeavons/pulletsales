@@ -257,7 +257,7 @@ function OrderCreatePage() {
                 key={idx}
                 className="border border-gray-200 rounded-lg p-4 bg-gray-50"
               >
-                <div className="grid grid-cols-4 gap-3 mb-3">
+                <div className="grid grid-cols-5 gap-3 mb-3">
                   <FormField label="Breed" required>
                     <select
                       value={line.breed_id}
@@ -296,19 +296,26 @@ function OrderCreatePage() {
                     />
                   </FormField>
 
-                  <FormField label="Food Clause">
+                  <FormField label="Food Clause (£)">
                     <input
                       type="number"
-                      step="0.0001"
+                      step="0.01"
                       min="0"
                       value={line.food_clause_value}
                       onChange={(e) =>
                         updateLine(idx, "food_clause_value", e.target.value)
                       }
                       className={inputClasses}
-                      placeholder="0.0000"
+                      placeholder="0.00"
                     />
                   </FormField>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Line Total</label>
+                    <div className="px-3 py-2 text-sm bg-gray-100 rounded-lg font-medium text-gray-900">
+                      £{((parseInt(line.quantity || "0", 10) || 0) * (parseFloat(line.price || "0") || 0)).toFixed(2)}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Line Extras */}

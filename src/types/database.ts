@@ -309,6 +309,20 @@ export interface OrderListFilters extends ListFilters {
   date_to?: string;
 }
 
+// ─── VAT Rates ───────────────────────────────────────────
+export interface VatRate {
+  id: string;
+  name: string;
+  rate: number;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type VatRateInsert = Omit<VatRate, "id" | "created_at" | "updated_at">;
+export type VatRateUpdate = Partial<Omit<VatRate, "id" | "created_at">>;
+
 // ─── API Response Types ──────────────────────────────────
 export interface PaginatedResponse<T> {
   data: T[];
