@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Top-left diamond - black -->
+  <path d="M20 2 C26 10 26 22 20 30 C14 22 14 10 20 2Z" fill="#1a1a1a"/>
+  <!-- Top-right diamond - orange -->
+  <path d="M44 2 C50 10 50 22 44 30 C38 22 38 10 44 2Z" fill="#e87511"/>
+  <!-- Bottom-left diamond - orange -->
+  <path d="M20 34 C26 42 26 54 20 62 C14 54 14 42 20 34Z" fill="#e87511"/>
+  <!-- Bottom-right diamond - black -->
+  <path d="M44 34 C50 42 50 54 44 62 C38 54 38 42 44 34Z" fill="#1a1a1a"/>
+</svg>
