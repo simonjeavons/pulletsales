@@ -60,7 +60,7 @@ export async function createInvoice(orderId: string) {
   // Validate order is completed
   const { data: order } = await db
     .from("orders")
-    .select("id, status, customer_id")
+    .select("*, customer:customers(*), rep:reps(name), delivery_address:customer_delivery_addresses(*)")
     .eq("id", orderId)
     .single();
 
@@ -78,7 +78,51 @@ export async function createInvoice(orderId: string) {
 
   if (existing) throw new Error("Invoice already exists for this order");
 
+  // Get despatch + lines
+  const { data: despatch } = await db
+    .from("despatches")
+    .select("*, transporter:transporters(transporter_name)")
+    .eq("order_id", orderId)
+    .single();
+
+  let despatchLines: any[] = [];
+  if (despatch) {
+    const { data: dl } = await db
+      .from("despatch_lines")
+      .select("*, breed:breeds(breed_name), rearer:rearers(name)")
+      .eq("despatch_id", despatch.id);
+    let rawLines = dl ?? [];
+
+    // Consolidate if flag is set
+    if (despatch.consolidate_invoice && rawLines.length > 0) {
+      const grouped = new Map<string, any>();
+      const unlinked: any[] = [];
+      for (const line of rawLines) {
+        if (!line.order_line_id) { unlinked.push(line); continue; }
+        const ex = grouped.get(line.order_line_id);
+        if (ex) {
+          ex.quantity += line.quantity;
+        } else {
+          grouped.set(line.order_line_id, { ...line, rearer: null, rearer_id: null });
+        }
+      }
+      rawLines = [...grouped.values(), ...unlinked];
+    }
+    despatchLines = rawLines;
+  }
+
+  // Get order lines for food clause comparison
+  const { data: orderLines } = await db.from("order_lines").select("id, food_clause_value").eq("order_id", orderId);
+
+  // Get food clause multiplier
+  const { data: fcSetting } = await db.from("system_settings").select("value").eq("key", "food_clause_multiplier").single();
+  const multiplier = parseFloat(fcSetting?.value || "0.60");
+
+  // Get default VAT rate
+  const { data: defaultVat } = await db.from("vat_rates").select("id, rate").eq("is_default", true).maybeSingle();
+
   const invoiceNumber = await nextInvoiceNumber();
+  const today = new Date().toISOString().split("T")[0];
 
   const { data: invoice, error } = await db
     .from("invoices")
@@ -86,6 +130,8 @@ export async function createInvoice(orderId: string) {
       invoice_number: invoiceNumber,
       order_id: orderId,
       customer_id: order.customer_id,
+      invoice_date: today,
+      vat_rate_id: defaultVat?.id || null,
       status: "draft",
       export_status: "pending",
     })
@@ -93,6 +139,72 @@ export async function createInvoice(orderId: string) {
     .single();
 
   if (error) throw new Error(error.message);
+
+  // Build invoice lines from despatch data
+  const customer = order.customer as any;
+  const deliveryAddr = order.delivery_address as any;
+  const taxRate = Number(defaultVat?.rate ?? 0);
+  const deliveryDate = despatch?.actual_delivery_date
+    ? new Date(despatch.actual_delivery_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
+    : "";
+
+  const invoiceLines: Array<{
+    invoice_id: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    vat_rate: number;
+  }> = [];
+
+  for (const dl of despatchLines) {
+    // Build description like the PDF does
+    const breedName = dl.breed?.breed_name || "Pullets";
+    const age = dl.age_weeks ? `${dl.age_weeks} wks old` : "";
+    const desc = [`${breedName} ${age}`.trim()];
+    if (deliveryAddr) {
+      desc.push(`Delivered to: ${deliveryAddr.label || ""}`);
+      if (customer?.company_name) desc.push(customer.company_name);
+      if (deliveryAddr.address_line_1) desc.push(deliveryAddr.address_line_1);
+      if (deliveryAddr.town_city) desc.push(deliveryAddr.town_city);
+      if (deliveryAddr.post_code) desc.push(deliveryAddr.post_code);
+    }
+
+    invoiceLines.push({
+      invoice_id: invoice.id,
+      description: desc.join("\n"),
+      quantity: dl.quantity,
+      unit_price: Number(dl.price),
+      vat_rate: taxRate,
+    });
+  }
+
+  // Add food clause adjustment line if applicable
+  let totalFoodClauseAdj = 0;
+  let totalFoodClauseQty = 0;
+  for (const dl of despatchLines) {
+    const ol = (orderLines ?? []).find((o: any) => o.id === dl.order_line_id);
+    const orderFeed = ol ? Number(ol.food_clause_value || 0) : 0;
+    const despatchFeed = Number(dl.food_clause_value || 0);
+    const changePerTon = despatchFeed - orderFeed;
+    const adjPerPullet = (changePerTon * multiplier) / 100;
+    totalFoodClauseAdj += adjPerPullet * dl.quantity;
+    totalFoodClauseQty += dl.quantity;
+  }
+
+  if (totalFoodClauseAdj !== 0 && totalFoodClauseQty > 0) {
+    const perPullet = totalFoodClauseAdj / totalFoodClauseQty;
+    invoiceLines.push({
+      invoice_id: invoice.id,
+      description: "Food Clause Adjustment",
+      quantity: totalFoodClauseQty,
+      unit_price: Number(perPullet.toFixed(4)),
+      vat_rate: taxRate,
+    });
+  }
+
+  if (invoiceLines.length > 0) {
+    await db.from("invoice_lines").insert(invoiceLines);
+  }
 
   // Transition order to invoiced
   await db.from("orders").update({ status: "invoiced" }).eq("id", orderId);
