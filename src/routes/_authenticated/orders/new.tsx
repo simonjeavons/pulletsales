@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import { createOrderFn } from "~/server/functions/orders";
@@ -104,6 +104,16 @@ function OrderCreatePage() {
   const removeLine = (idx: number) => {
     if (lines.length <= 1) return;
     setLines((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const toggleLineExtra = (idx: number, extraId: string) => {
+    setLines((prev) =>
+      prev.map((l, i) =>
+        i === idx
+          ? { ...l, extra_ids: l.extra_ids.includes(extraId) ? l.extra_ids.filter((id) => id !== extraId) : [...l.extra_ids, extraId] }
+          : l
+      )
+    );
   };
 
   const toggleOrderExtra = (extraId: string) => {
@@ -261,7 +271,8 @@ function OrderCreatePage() {
                   const lineTotal = (parseInt(line.quantity || "0", 10) || 0) * (parseFloat(line.price || "0") || 0);
                   const tabBase = 10 + idx * 6;
                   return (
-                    <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50/50 group">
+                    <React.Fragment key={idx}>
+                    <tr className="border-t border-gray-100 hover:bg-gray-50/50 group">
                       <td className="px-3 py-1.5 text-gray-400 text-xs">{idx + 1}</td>
                       <td className="px-2 py-1">
                         <select
@@ -336,6 +347,40 @@ function OrderCreatePage() {
                         )}
                       </td>
                     </tr>
+                    {/* Inline line extras — shown when breed is selected and extras exist */}
+                    {line.breed_id && extras.length > 0 && (
+                      <tr key={`extras-${idx}`} className="bg-gray-50/40">
+                        <td className="px-3 py-1"></td>
+                        <td colSpan={8} className="px-2 py-1.5">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mr-1">Extras:</span>
+                            {extras.map((ex) => {
+                              const selected = line.extra_ids.includes(ex.id);
+                              return (
+                                <button
+                                  key={ex.id}
+                                  type="button"
+                                  onClick={() => toggleLineExtra(idx, ex.id)}
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+                                    selected
+                                      ? "bg-brand-50 text-brand-700 border-brand-300"
+                                      : "bg-white text-gray-400 border-gray-200 hover:text-gray-600 hover:border-gray-300"
+                                  }`}
+                                >
+                                  {selected && (
+                                    <svg className="w-3 h-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                  {ex.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
