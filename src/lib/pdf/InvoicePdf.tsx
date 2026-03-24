@@ -63,16 +63,17 @@ interface InvoicePdfData {
   bankAccountNo: string;
 }
 
-export function InvoicePdf({ data }: { data: InvoicePdfData }) {
+const COPIES = ["Customer Copy", "Invoice Copy", "Rep Copy"] as const;
+
+function InvoicePage({ data, copyLabel }: { data: InvoicePdfData; copyLabel: string }) {
   const displayOrderNo = `${data.orderNumber}/${data.repName}`;
 
   return (
-    <Document>
-      <Page size="A4" style={s.page}>
-        <Text style={s.title}>INVOICE {data.invoiceNumber}</Text>
+    <Page size="A4" style={s.page}>
+      <Text style={s.title}>INVOICE {data.invoiceNumber}</Text>
 
-        {/* Header */}
-        <View style={s.header}>
+      {/* Header */}
+      <View style={s.header}>
           <View style={{ width: "45%" }}>
             <Text style={{ fontWeight: "bold", fontSize: 11 }}>Morton</Text>
             <Text style={{ fontWeight: "bold", fontSize: 11 }}>Oswestry</Text>
@@ -203,8 +204,17 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
           <Text>Account No: {data.bankAccountNo}</Text>
         </View>
 
-        <Text style={s.footer}>Customer Copy</Text>
-      </Page>
+        <Text style={s.footer}>{copyLabel}</Text>
+    </Page>
+  );
+}
+
+export function InvoicePdf({ data }: { data: InvoicePdfData }) {
+  return (
+    <Document>
+      {COPIES.map((label) => (
+        <InvoicePage key={label} data={data} copyLabel={label} />
+      ))}
     </Document>
   );
 }
