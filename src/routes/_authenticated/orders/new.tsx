@@ -22,7 +22,7 @@ interface LineEntry {
 }
 
 const emptyLine = (): LineEntry => ({
-  breed_id: "", rearer_id: "", quantity: "", price: "", food_clause_value: "0", age_weeks: "", extra_ids: [],
+  breed_id: "", rearer_id: "", quantity: "", price: "", food_clause_value: "0", age_weeks: "16", extra_ids: [],
 });
 
 // Compact select styling
