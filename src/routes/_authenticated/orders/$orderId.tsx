@@ -375,6 +375,7 @@ function DespatchTab({
   const supabase = getSupabaseBrowserClient();
   const [transporters, setTransporters] = useState<any[]>([]);
   const [extras, setExtras] = useState<any[]>([]);
+  const [breeds, setBreeds] = useState<any[]>([]);
 
   const [deliveryDate, setDeliveryDate] = useState("");
   const [unloadingTime, setUnloadingTime] = useState("");
@@ -406,14 +407,16 @@ function DespatchTab({
   // Load lookups
   useEffect(() => {
     async function load() {
-      const [t, e, r] = await Promise.all([
+      const [t, e, r, b] = await Promise.all([
         supabase.from("transporters").select("id, transporter_name").eq("is_active", true).order("transporter_name"),
         supabase.from("extras").select("id, name").eq("is_available", true).order("name"),
         supabase.from("rearers").select("id, name").eq("is_active", true).order("name"),
+        supabase.from("breeds").select("id, breed_name").eq("is_available", true).order("breed_name"),
       ]);
       setTransporters(t.data ?? []);
       setExtras(e.data ?? []);
       setRearers(r.data ?? []);
+      setBreeds(b.data ?? []);
     }
     load();
   }, []);
@@ -731,103 +734,203 @@ function DespatchTab({
 
       {/* Despatch Lines */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Final Despatch Lines
-        </h3>
-        <p className="text-sm text-gray-500 mb-4">
-          Copied from order lines. Edit quantities, prices, or extras as needed
-          for the final despatch.
-        </p>
-
-        <div className="space-y-4">
-          {lines.map((line, idx) => (
-            <div
-              key={idx}
-              className="border border-gray-200 rounded-lg p-4 bg-gray-50"
-            >
-              <div className="grid grid-cols-6 gap-3 mb-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    Breed
-                  </label>
-                  <p className="text-sm font-medium">{line.breed_name}</p>
-                </div>
-                <FormField label="Rearer">
-                  <select
-                    value={line.rearer_id}
-                    onChange={(e) => updateLine(idx, "rearer_id", e.target.value)}
-                    className={selectClasses}
-                  >
-                    <option value="">— Rearer —</option>
-                    {rearers.map((r) => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
-                </FormField>
-                <FormField label="Age (weeks)">
-                  <input
-                    type="number"
-                    min="0"
-                    value={line.age_weeks}
-                    onChange={(e) => updateLine(idx, "age_weeks", e.target.value)}
-                    className={inputClasses}
-                    placeholder="e.g. 16"
-                  />
-                </FormField>
-                <FormField label="Final Quantity">
-                  <input
-                    type="number"
-                    min="1"
-                    value={line.quantity}
-                    onChange={(e) => updateLine(idx, "quantity", e.target.value)}
-                    className={inputClasses}
-                  />
-                </FormField>
-                <FormField label="Final Price (£)">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={line.price}
-                    onChange={(e) => updateLine(idx, "price", e.target.value)}
-                    className={inputClasses}
-                  />
-                </FormField>
-                <FormField label="Final Food Clause">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={line.food_clause_value}
-                    onChange={(e) =>
-                      updateLine(idx, "food_clause_value", e.target.value)
-                    }
-                    className={inputClasses}
-                  />
-                </FormField>
-              </div>
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-xs font-medium text-gray-500 uppercase">
-                  Extras:
-                </span>
-                {extras.map((ex) => (
-                  <label
-                    key={ex.id}
-                    className="flex items-center gap-1.5 text-sm cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={line.extra_ids.includes(ex.id)}
-                      onChange={() => toggleLineExtra(idx, ex.id)}
-                      className={checkboxClasses}
-                    />
-                    {ex.name}
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Final Despatch Lines</h3>
+            <p className="text-sm text-gray-500">Split lines across multiple rearers as needed. Click "+ Split" to add a sub-line.</p>
+          </div>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-gray-500">{lines.length} line(s)</span>
+            <span className="font-semibold text-gray-900">
+              {lines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0).toLocaleString()} pullets
+            </span>
+          </div>
         </div>
+
+        {/* Group lines by order_line_id */}
+        {(() => {
+          // Get unique order line IDs (preserving order) + any with null order_line_id
+          const orderLineIds = [...new Set(lines.filter(l => l.order_line_id).map(l => l.order_line_id!))];
+          const unlinkedLines = lines.map((l, idx) => ({ ...l, _idx: idx })).filter(l => !l.order_line_id);
+
+          return (
+            <div className="space-y-3">
+              {orderLineIds.map((olId) => {
+                const groupLines = lines.map((l, idx) => ({ ...l, _idx: idx })).filter(l => l.order_line_id === olId);
+                const orderLine = order.lines.find(l => l.id === olId);
+                const originalQty = orderLine?.quantity || 0;
+                const allocatedQty = groupLines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0);
+                const breedName = groupLines[0]?.breed_name || orderLine?.breed?.breed_name || "Unknown";
+                const qtyMatch = allocatedQty === originalQty;
+                const qtyOver = allocatedQty > originalQty;
+
+                return (
+                  <div key={olId} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Order line header */}
+                    <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-200">
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="font-semibold text-gray-700">{breedName}</span>
+                        <span className="text-gray-400">|</span>
+                        <span className="text-gray-500">Ordered: <span className="font-medium text-gray-700">{originalQty.toLocaleString()}</span></span>
+                        <span className="text-gray-400">|</span>
+                        <span className={qtyMatch ? "text-green-600 font-medium" : qtyOver ? "text-red-600 font-medium" : "text-amber-600 font-medium"}>
+                          Allocated: {allocatedQty.toLocaleString()}
+                          {!qtyMatch && ` (${qtyOver ? "+" : ""}${(allocatedQty - originalQty).toLocaleString()})`}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Add a new split line copying breed/price/extras from first line in group
+                          const source = groupLines[0];
+                          const newLine = {
+                            order_line_id: olId,
+                            breed_id: source.breed_id,
+                            breed_name: source.breed_name,
+                            rearer_id: "",
+                            rearer_name: "",
+                            age_weeks: source.age_weeks,
+                            quantity: "",
+                            price: source.price,
+                            food_clause_value: source.food_clause_value,
+                            extra_ids: [...source.extra_ids],
+                          };
+                          // Insert after the last line in this group
+                          const lastIdx = groupLines[groupLines.length - 1]._idx;
+                          setLines(prev => [...prev.slice(0, lastIdx + 1), newLine, ...prev.slice(lastIdx + 1)]);
+                        }}
+                        className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                      >
+                        + Split
+                      </button>
+                    </div>
+
+                    {/* Sub-lines */}
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs text-gray-500 uppercase bg-gray-50/50">
+                          <th className="px-3 py-1.5 text-left font-medium" style={{width: '20%'}}>Rearer</th>
+                          <th className="px-3 py-1.5 text-right font-medium" style={{width: '10%'}}>Age</th>
+                          <th className="px-3 py-1.5 text-right font-medium" style={{width: '14%'}}>Qty</th>
+                          <th className="px-3 py-1.5 text-right font-medium" style={{width: '14%'}}>Price (£)</th>
+                          <th className="px-3 py-1.5 text-right font-medium" style={{width: '14%'}}>Food Cl.</th>
+                          <th className="px-3 py-1.5 text-left font-medium">Extras</th>
+                          <th className="px-3 py-1.5 w-8"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupLines.map((line) => (
+                          <tr key={line._idx} className="border-t border-gray-100 hover:bg-gray-50/50">
+                            <td className="px-2 py-1.5">
+                              <select value={line.rearer_id} onChange={(e) => updateLine(line._idx, "rearer_id", e.target.value)} className={selectClasses + " text-xs py-1.5"}>
+                                <option value="">— Rearer —</option>
+                                {rearers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                              </select>
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input type="number" min="0" value={line.age_weeks} onChange={(e) => updateLine(line._idx, "age_weeks", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="16" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input type="number" min="0" value={line.quantity} onChange={(e) => updateLine(line._idx, "quantity", e.target.value)} className={inputClasses + " text-xs text-right py-1.5 font-medium"} placeholder="0" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input type="number" step="0.01" min="0" value={line.price} onChange={(e) => updateLine(line._idx, "price", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="0.00" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input type="number" step="0.01" min="0" value={line.food_clause_value} onChange={(e) => updateLine(line._idx, "food_clause_value", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="0.00" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {extras.map((ex) => {
+                                  const sel = line.extra_ids.includes(ex.id);
+                                  return (
+                                    <button key={ex.id} type="button" onClick={() => toggleLineExtra(line._idx, ex.id)}
+                                      className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${sel ? "bg-brand-50 text-brand-700 border-brand-300" : "bg-white text-gray-400 border-gray-200 hover:text-gray-600 hover:border-gray-300"}`}>
+                                      {sel && <svg className="w-2.5 h-2.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                      {ex.name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                            <td className="px-2 py-1.5">
+                              {groupLines.length > 1 && (
+                                <button type="button" onClick={() => setLines(prev => prev.filter((_, i) => i !== line._idx))} className="text-gray-300 hover:text-red-500" title="Remove split line">
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
+
+              {/* Unlinked lines (added manually, not from order) */}
+              {unlinkedLines.length > 0 && (
+                <div className="border border-dashed border-gray-300 rounded-lg overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-600">
+                    Additional Lines
+                  </div>
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {unlinkedLines.map((line) => (
+                        <tr key={line._idx} className="border-t border-gray-100">
+                          <td className="px-2 py-1.5" style={{width: '15%'}}>
+                            <select value={line.breed_id} onChange={(e) => {
+                              const breed = breeds.find(b => b.id === e.target.value);
+                              updateLine(line._idx, "breed_id", e.target.value);
+                              if (breed) updateLine(line._idx, "breed_name", breed.breed_name);
+                            }} className={selectClasses + " text-xs py-1.5"}>
+                              <option value="">— Breed —</option>
+                              {breeds.map((b) => <option key={b.id} value={b.id}>{b.breed_name}</option>)}
+                            </select>
+                          </td>
+                          <td className="px-2 py-1.5" style={{width: '15%'}}>
+                            <select value={line.rearer_id} onChange={(e) => updateLine(line._idx, "rearer_id", e.target.value)} className={selectClasses + " text-xs py-1.5"}>
+                              <option value="">— Rearer —</option>
+                              {rearers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                            </select>
+                          </td>
+                          <td className="px-2 py-1.5"><input type="number" min="0" value={line.age_weeks} onChange={(e) => updateLine(line._idx, "age_weeks", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="Age" /></td>
+                          <td className="px-2 py-1.5"><input type="number" min="0" value={line.quantity} onChange={(e) => updateLine(line._idx, "quantity", e.target.value)} className={inputClasses + " text-xs text-right py-1.5 font-medium"} placeholder="Qty" /></td>
+                          <td className="px-2 py-1.5"><input type="number" step="0.01" min="0" value={line.price} onChange={(e) => updateLine(line._idx, "price", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="Price" /></td>
+                          <td className="px-2 py-1.5"><input type="number" step="0.01" min="0" value={line.food_clause_value} onChange={(e) => updateLine(line._idx, "food_clause_value", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="Food Cl." /></td>
+                          <td className="px-2 py-1.5">
+                            <button type="button" onClick={() => setLines(prev => prev.filter((_, i) => i !== line._idx))} className="text-gray-300 hover:text-red-500" title="Remove line">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setLines(prev => [...prev, {
+                  order_line_id: null,
+                  breed_id: "",
+                  breed_name: "",
+                  rearer_id: "",
+                  rearer_name: "",
+                  age_weeks: "",
+                  quantity: "",
+                  price: "",
+                  food_clause_value: "0",
+                  extra_ids: [],
+                }])}
+                className="text-sm font-medium text-brand-600 hover:text-brand-700"
+              >
+                + Add additional line
+              </button>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Despatch-level extras */}
