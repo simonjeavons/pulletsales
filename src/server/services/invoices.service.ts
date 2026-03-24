@@ -309,14 +309,38 @@ export async function getInvoicePdfData(invoiceId: string) {
     };
   });
 
-  // Food clause adjustment
-  const totalFoodClause = despatchLines.reduce((s: number, l: any) => {
-    return s + (l.quantity * Number(l.food_clause_value || 0));
-  }, 0);
-  const foodClausePrice = despatchLines.length > 0 ? -Number(despatchLines[0].food_clause_value || 0) : 0;
+  // Food clause adjustment — calculated using multiplier
+  // (despatch_feed - order_feed) × multiplier / 100 = adjustment per pullet in £
+  const foodClauseMultiplier = parseFloat(sm["food_clause_multiplier"] || "0.60");
+
+  // Get order lines to compare food clause values
+  let orderLines: any[] = [];
+  if (invoice.order_id) {
+    const { data: ol } = await db.from("order_lines").select("id, food_clause_value").eq("order_id", invoice.order_id);
+    orderLines = ol ?? [];
+  }
+
+  let totalFoodClauseAdj = 0;
+  let foodClausePricePerPullet = 0;
+  let totalFoodClauseQty = 0;
+
+  despatchLines.forEach((dl: any) => {
+    const orderLine = orderLines.find((ol: any) => ol.id === dl.order_line_id);
+    const orderFeed = orderLine ? Number(orderLine.food_clause_value || 0) : 0;
+    const despatchFeed = Number(dl.food_clause_value || 0);
+    const changePerTon = despatchFeed - orderFeed;
+    const adjPerPulletPounds = (changePerTon * foodClauseMultiplier) / 100;
+    totalFoodClauseAdj += adjPerPulletPounds * dl.quantity;
+    totalFoodClauseQty += dl.quantity;
+  });
+
+  // Per-pullet adjustment for display on invoice
+  if (totalFoodClauseQty > 0) {
+    foodClausePricePerPullet = totalFoodClauseAdj / totalFoodClauseQty;
+  }
 
   const lineTotal = pdfLines.reduce((s, l) => s + l.amount, 0);
-  const strictlyNet = lineTotal - totalFoodClause;
+  const strictlyNet = lineTotal + totalFoodClauseAdj;
   const totalVat = strictlyNet * (taxRate / 100);
   const invoiceTotal = strictlyNet + totalVat;
 
@@ -339,7 +363,7 @@ export async function getInvoicePdfData(invoiceId: string) {
       post_code: deliveryAddr?.post_code || customer?.post_code || undefined,
     },
     lines: pdfLines,
-    foodClauseAdjustment: foodClausePrice,
+    foodClauseAdjustment: foodClausePricePerPullet,
     foodClauseTaxRate: taxRate,
     totalVat,
     strictlyNet,

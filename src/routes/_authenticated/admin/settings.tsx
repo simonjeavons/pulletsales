@@ -27,6 +27,13 @@ const settingGroups = [
     ],
   },
   {
+    title: "Food Clause",
+    description: "Food clause adjustment calculation settings.",
+    settings: [
+      { key: "food_clause_multiplier", label: "Multiplier", type: "number" },
+    ],
+  },
+  {
     title: "TAS Export Defaults",
     description: "Default values used when generating TAS CSV exports.",
     settings: [

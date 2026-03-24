@@ -404,19 +404,23 @@ function DespatchTab({
   const [error, setError] = useState("");
   const [initialized, setInitialized] = useState(false);
 
+  const [foodClauseMultiplier, setFoodClauseMultiplier] = useState(0.60);
+
   // Load lookups
   useEffect(() => {
     async function load() {
-      const [t, e, r, b] = await Promise.all([
+      const [t, e, r, b, s] = await Promise.all([
         supabase.from("transporters").select("id, transporter_name").eq("is_active", true).order("transporter_name"),
         supabase.from("extras").select("id, name").eq("is_available", true).order("name"),
         supabase.from("rearers").select("id, name").eq("is_active", true).order("name"),
         supabase.from("breeds").select("id, breed_name").eq("is_available", true).order("breed_name"),
+        supabase.from("system_settings").select("value").eq("key", "food_clause_multiplier").single(),
       ]);
       setTransporters(t.data ?? []);
       setExtras(e.data ?? []);
       setRearers(r.data ?? []);
       setBreeds(b.data ?? []);
+      if (s.data?.value) setFoodClauseMultiplier(parseFloat(s.data.value));
     }
     load();
   }, []);
@@ -793,7 +797,7 @@ function DespatchTab({
                           <th className="px-3 py-1.5 text-right font-medium" style={{width: '10%'}}>Age</th>
                           <th className="px-3 py-1.5 text-right font-medium" style={{width: '14%'}}>Qty</th>
                           <th className="px-3 py-1.5 text-right font-medium" style={{width: '14%'}}>Price (£)</th>
-                          <th className="px-3 py-1.5 text-right font-medium" style={{width: '14%'}}>Food Cl.</th>
+                          <th className="px-3 py-1.5 text-right font-medium" style={{width: '14%'}}>Food Clause</th>
                           <th className="px-3 py-1.5 text-left font-medium">Extras</th>
                           <th className="px-3 py-1.5 w-8"></th>
                         </tr>
@@ -877,7 +881,7 @@ function DespatchTab({
                           <td className="px-2 py-1.5"><input type="number" min="0" value={line.age_weeks} onChange={(e) => updateLine(line._idx, "age_weeks", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="Age" /></td>
                           <td className="px-2 py-1.5"><input type="number" min="0" value={line.quantity} onChange={(e) => updateLine(line._idx, "quantity", e.target.value)} className={inputClasses + " text-xs text-right py-1.5 font-medium"} placeholder="Qty" /></td>
                           <td className="px-2 py-1.5"><input type="number" step="0.01" min="0" value={line.price} onChange={(e) => updateLine(line._idx, "price", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="Price" /></td>
-                          <td className="px-2 py-1.5"><input type="number" step="0.01" min="0" value={line.food_clause_value} onChange={(e) => updateLine(line._idx, "food_clause_value", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="Food Cl." /></td>
+                          <td className="px-2 py-1.5"><input type="number" step="0.01" min="0" value={line.food_clause_value} onChange={(e) => updateLine(line._idx, "food_clause_value", e.target.value)} className={inputClasses + " text-xs text-right py-1.5"} placeholder="Food Clause" /></td>
                           <td className="px-2 py-1.5">
                             <button type="button" onClick={() => setLines(prev => prev.filter((_, i) => i !== line._idx))} className="text-gray-300 hover:text-red-500" title="Remove line">
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -912,6 +916,102 @@ function DespatchTab({
           );
         })()}
       </div>
+
+      {/* Food Clause Adjustment Summary */}
+      {(() => {
+        const adjustments = lines
+          .map((line, idx) => {
+            if (!line.order_line_id || !line.quantity) return null;
+            const orderLine = order.lines.find((l) => l.id === line.order_line_id);
+            if (!orderLine) return null;
+            const orderFeed = Number(orderLine.food_clause_value) || 0;
+            const despatchFeed = parseFloat(line.food_clause_value) || 0;
+            if (orderFeed === 0 && despatchFeed === 0) return null;
+            const changePerTon = despatchFeed - orderFeed;
+            const changePerPulletPence = changePerTon * foodClauseMultiplier;
+            const changePerPulletPounds = changePerPulletPence / 100;
+            const qty = parseInt(line.quantity, 10) || 0;
+            const totalAdj = changePerPulletPounds * qty;
+            return {
+              idx,
+              breedName: line.breed_name,
+              orderFeed,
+              despatchFeed,
+              changePerTon,
+              multiplier: foodClauseMultiplier,
+              changePerPulletPence,
+              changePerPulletPounds,
+              qty,
+              totalAdj,
+            };
+          })
+          .filter(Boolean) as Array<{
+            idx: number; breedName: string; orderFeed: number; despatchFeed: number;
+            changePerTon: number; multiplier: number; changePerPulletPence: number;
+            changePerPulletPounds: number; qty: number; totalAdj: number;
+          }>;
+
+        const totalFoodClauseAdj = adjustments.reduce((s, a) => s + a.totalAdj, 0);
+        const hasAnyChange = adjustments.some((a) => a.changePerTon !== 0);
+
+        if (adjustments.length === 0) return null;
+
+        return (
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Food Clause Adjustment</h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Calculated as: (Feed at delivery − Feed at order) × multiplier ({foodClauseMultiplier}) ÷ 100 = adjustment per pullet
+            </p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 uppercase border-b border-gray-200">
+                  <th className="pb-2 text-left">Line</th>
+                  <th className="pb-2 text-right">Feed at Order (£/t)</th>
+                  <th className="pb-2 text-right">Feed at Delivery (£/t)</th>
+                  <th className="pb-2 text-right">Change (£/t)</th>
+                  <th className="pb-2 text-right">× Multiplier</th>
+                  <th className="pb-2 text-right">Per Pullet (p)</th>
+                  <th className="pb-2 text-right">Per Pullet (£)</th>
+                  <th className="pb-2 text-right">Qty</th>
+                  <th className="pb-2 text-right font-semibold">Total Adj.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {adjustments.map((a) => (
+                  <tr key={a.idx} className={a.changePerTon !== 0 ? "" : "text-gray-400"}>
+                    <td className="py-2 font-medium">{a.breedName}</td>
+                    <td className="py-2 text-right">{a.orderFeed.toFixed(2)}</td>
+                    <td className="py-2 text-right">{a.despatchFeed.toFixed(2)}</td>
+                    <td className={`py-2 text-right font-medium ${a.changePerTon > 0 ? "text-red-600" : a.changePerTon < 0 ? "text-green-600" : ""}`}>
+                      {a.changePerTon > 0 ? "+" : ""}{a.changePerTon.toFixed(2)}
+                    </td>
+                    <td className="py-2 text-right text-gray-400">× {a.multiplier}</td>
+                    <td className="py-2 text-right">{a.changePerPulletPence.toFixed(2)}p</td>
+                    <td className="py-2 text-right">£{a.changePerPulletPounds.toFixed(4)}</td>
+                    <td className="py-2 text-right">{a.qty.toLocaleString()}</td>
+                    <td className={`py-2 text-right font-semibold ${a.totalAdj > 0 ? "text-red-600" : a.totalAdj < 0 ? "text-green-600" : ""}`}>
+                      {a.totalAdj >= 0 ? "£" : "-£"}{Math.abs(a.totalAdj).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {adjustments.length > 1 && (
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300">
+                    <td colSpan={8} className="py-2 text-right font-semibold text-gray-700">Total Food Clause Adjustment</td>
+                    <td className={`py-2 text-right font-bold text-lg ${totalFoodClauseAdj > 0 ? "text-red-600" : totalFoodClauseAdj < 0 ? "text-green-600" : ""}`}>
+                      {totalFoodClauseAdj >= 0 ? "£" : "-£"}{Math.abs(totalFoodClauseAdj).toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+            {!hasAnyChange && (
+              <p className="text-xs text-gray-400 mt-2 italic">No feed price change — no adjustment required.</p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Final Order Extras */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
