@@ -472,7 +472,8 @@ export async function getInvoicePdfData(invoiceId: string) {
   const totalVat = strictlyNet * (taxRate / 100);
   const invoiceTotal = strictlyNet + totalVat;
 
-  const paymentTermsDays = parseInt(sm["payment_terms_days"] || "7", 10);
+  // Use customer payment terms, fall back to system setting
+  const paymentTermsDays = customer?.payment_terms_days ?? parseInt(sm["payment_terms_days"] || "7", 10);
   const invoiceDateObj = new Date(invoice.invoice_date);
   const dueDate = new Date(invoiceDateObj);
   dueDate.setDate(dueDate.getDate() + paymentTermsDays);

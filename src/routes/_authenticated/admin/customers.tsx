@@ -96,10 +96,11 @@ function CustomerFormModal({ open, onClose, onSubmit, loading, error, title, def
   const [town, setTown] = useState(defaults?.town_city || "");
   const [postCode, setPostCode] = useState(defaults?.post_code || "");
   const [repId, setRepId] = useState(defaults?.rep_id || "");
+  const [paymentTerms, setPaymentTerms] = useState(String((defaults as any)?.payment_terms_days ?? "7"));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ customer_unique_id: uid, company_name: companyName, address_line_1: addr1, address_line_2: addr2, town_city: town, post_code: postCode, rep_id: repId || undefined, is_active: defaults?.is_active ?? true });
+    onSubmit({ customer_unique_id: uid, company_name: companyName, address_line_1: addr1, address_line_2: addr2, town_city: town, post_code: postCode, rep_id: repId || undefined, payment_terms_days: parseInt(paymentTerms, 10) || 7, is_active: defaults?.is_active ?? true });
   };
 
   return (
@@ -116,12 +117,17 @@ function CustomerFormModal({ open, onClose, onSubmit, loading, error, title, def
           <FormField label="Town / City"><input type="text" value={town} onChange={(e) => setTown(e.target.value)} className={inputClasses} /></FormField>
           <FormField label="Post Code"><input type="text" value={postCode} onChange={(e) => setPostCode(e.target.value)} className={inputClasses} /></FormField>
         </div>
-        <FormField label="Assigned Rep">
-          <select value={repId} onChange={(e) => setRepId(e.target.value)} className={selectClasses}>
-            <option value="">— Select a rep —</option>
-            {reps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        </FormField>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Assigned Rep">
+            <select value={repId} onChange={(e) => setRepId(e.target.value)} className={selectClasses}>
+              <option value="">— Select a rep —</option>
+              {reps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Payment Terms (days)">
+            <input type="number" min="0" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className={inputClasses} placeholder="7" />
+          </FormField>
+        </div>
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>{defaults ? "Save Changes" : "Add Customer"}</Button>
