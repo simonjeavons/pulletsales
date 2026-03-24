@@ -123,7 +123,7 @@ function OrdersListPage() {
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search by order number..."
+          placeholder="Search by order number or customer..."
           className="w-80"
         />
         <select

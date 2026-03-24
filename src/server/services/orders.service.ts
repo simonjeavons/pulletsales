@@ -54,19 +54,32 @@ export async function listOrders(filters: OrderListFilters = {}) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // If searching by customer, find matching customer IDs first
+  let customerIds: string[] | null = null;
+  if (search) {
+    const { data: matchingCustomers } = await admin()
+      .from("customers")
+      .select("id")
+      .or(`company_name.ilike.%${search}%,customer_unique_id.ilike.%${search}%`);
+    customerIds = (matchingCustomers ?? []).map((c: any) => c.id);
+  }
+
   let query = admin()
     .from("orders")
     .select(
       "*, customer:customers(id, company_name, customer_unique_id), rep:reps(id, name)",
       { count: "exact" }
     )
-    .order("created_at", { ascending: false })
+    .order("order_number", { ascending: false })
     .range(from, to);
 
   if (search) {
-    query = query.or(
-      `order_number.ilike.%${search}%`
-    );
+    // Match on order number OR any matching customer IDs
+    const conditions = [`order_number.ilike.%${search}%`];
+    if (customerIds && customerIds.length > 0) {
+      conditions.push(`customer_id.in.(${customerIds.join(",")})`);
+    }
+    query = query.or(conditions.join(","));
   }
 
   if (status) {
