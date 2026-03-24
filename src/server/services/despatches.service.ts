@@ -94,6 +94,7 @@ export async function saveDespatch(orderId: string, input: DespatchInput, create
         advice_date: input.advice_date || null,
         is_delivery_amended: input.is_delivery_amended || false,
         despatch_notes: input.despatch_notes || null,
+        consolidate_invoice: input.consolidate_invoice || false,
       })
       .eq("id", existing.id);
 
@@ -123,6 +124,7 @@ export async function saveDespatch(orderId: string, input: DespatchInput, create
         advice_date: input.advice_date || null,
         is_delivery_amended: input.is_delivery_amended || false,
         despatch_notes: input.despatch_notes || null,
+        consolidate_invoice: input.consolidate_invoice || false,
         created_by: createdBy || null,
       })
       .select()

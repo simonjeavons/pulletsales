@@ -377,6 +377,10 @@ function DespatchTab({
   const [extras, setExtras] = useState<any[]>([]);
   const [breeds, setBreeds] = useState<any[]>([]);
 
+  const [consolidateAdvice, setConsolidateAdvice] = useState(false);
+  const [consolidateDespatch, setConsolidateDespatch] = useState(false);
+  const [consolidateInvoice, setConsolidateInvoice] = useState(false);
+
   const [deliveryDate, setDeliveryDate] = useState("");
   const [unloadingTime, setUnloadingTime] = useState("");
   const [transporterId, setTransporterId] = useState("");
@@ -442,6 +446,7 @@ function DespatchTab({
       setAdviceBody(existingDespatch.advice_body || "");
       setAdviceDate(existingDespatch.advice_date || "");
       setIsDeliveryAmended(existingDespatch.is_delivery_amended || false);
+      setConsolidateInvoice(existingDespatch.consolidate_invoice || false);
       setDespatchNotes(existingDespatch.despatch_notes || "");
       setLines(
         existingDespatch.lines.map((l: any) => ({
@@ -560,6 +565,7 @@ function DespatchTab({
           advice_date: adviceDate || undefined,
           is_delivery_amended: isDeliveryAmended,
           despatch_notes: despatchNotes || undefined,
+          consolidate_invoice: consolidateInvoice,
           lines: validLines.map((l) => ({
             order_line_id: l.order_line_id || null,
             breed_id: l.breed_id,
@@ -915,6 +921,23 @@ function DespatchTab({
             </div>
           );
         })()}
+
+        {/* Consolidation options */}
+        <div className="border-t border-gray-200 px-5 py-3 bg-gray-50 rounded-b-xl flex items-center gap-6">
+          <span className="text-xs font-medium text-gray-500 uppercase">Consolidate lines on:</span>
+          <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input type="checkbox" checked={consolidateAdvice} onChange={(e) => setConsolidateAdvice(e.target.checked)} className={checkboxClasses} />
+            Delivery Advice
+          </label>
+          <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input type="checkbox" checked={consolidateDespatch} onChange={(e) => setConsolidateDespatch(e.target.checked)} className={checkboxClasses} />
+            Despatch Note
+          </label>
+          <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input type="checkbox" checked={consolidateInvoice} onChange={(e) => setConsolidateInvoice(e.target.checked)} className={checkboxClasses} />
+            Invoice
+          </label>
+        </div>
       </div>
 
       {/* Food Clause Adjustment Summary */}
@@ -1102,11 +1125,38 @@ function DespatchTab({
   );
 
   // ─── PDF handlers ──────────────────────────────────────
+  // Consolidate split lines back to one line per order_line_id
+  function consolidateLines(inputLines: typeof lines) {
+    const grouped = new Map<string, typeof lines[0]>();
+    const unlinked: typeof lines = [];
+    for (const line of inputLines) {
+      if (!line.order_line_id) {
+        unlinked.push(line);
+        continue;
+      }
+      const existing = grouped.get(line.order_line_id);
+      if (existing) {
+        // Sum quantity, keep same breed/price/food_clause/extras
+        existing.quantity = String(
+          (parseInt(existing.quantity || "0", 10) || 0) + (parseInt(line.quantity || "0", 10) || 0)
+        );
+      } else {
+        grouped.set(line.order_line_id, {
+          ...line,
+          rearer_id: "", // omit rearer on consolidated
+          rearer_name: "",
+        });
+      }
+    }
+    return [...grouped.values(), ...unlinked];
+  }
+
   function handleDeliveryAdvicePdf(desp: any) {
+    const pdfLines = consolidateAdvice ? consolidateLines(lines) : lines;
     const repName = order.rep?.name || "";
-    const totalQty = lines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0);
-    const firstBreed = lines[0]?.breed_name || "Pullets";
-    const firstAge = lines[0]?.age_weeks ? parseInt(lines[0].age_weeks, 10) : null;
+    const totalQty = pdfLines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0);
+    const firstBreed = pdfLines[0]?.breed_name || "Pullets";
+    const firstAge = pdfLines[0]?.age_weeks ? parseInt(pdfLines[0].age_weeks, 10) : null;
     const wcDate = order.requested_delivery_week_commencing
       ? new Date(order.requested_delivery_week_commencing).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
       : "TBC";
@@ -1136,7 +1186,7 @@ function DespatchTab({
         breed: firstBreed,
         age: firstAge,
         weekCommencing: wcDate,
-        lines: lines.map((l) => ({
+        lines: pdfLines.map((l) => ({
           deliveryDate: delivDateFormatted,
           quantity: parseInt(l.quantity || "0", 10),
           breed: l.breed_name,
@@ -1157,11 +1207,12 @@ function DespatchTab({
   }
 
   function handleDespatchNotePdf(desp: any) {
+    const pdfLines = consolidateDespatch ? consolidateLines(lines) : lines;
     const repName = order.rep?.name || "";
-    const totalQty = lines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0);
-    const firstBreed = lines[0]?.breed_name || "Pullets";
-    const firstAge = lines[0]?.age_weeks ? parseInt(lines[0].age_weeks, 10) : null;
-    const firstRearer = lines[0]?.rearer_id ? rearers.find((r) => r.id === lines[0].rearer_id)?.name || "" : "";
+    const totalQty = pdfLines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0);
+    const firstBreed = pdfLines[0]?.breed_name || "Pullets";
+    const firstAge = pdfLines[0]?.age_weeks ? parseInt(pdfLines[0].age_weeks, 10) : null;
+    const firstRearer = pdfLines[0]?.rearer_id ? rearers.find((r) => r.id === pdfLines[0].rearer_id)?.name || "" : "";
     const transporterName = transporters.find((t) => t.id === transporterId)?.transporter_name || "";
     const delivDateFormatted = deliveryDate
       ? new Date(deliveryDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })
@@ -1181,7 +1232,7 @@ function DespatchTab({
           phone: undefined,
         },
         rearerName: firstRearer,
-        quantity: parseInt(lines[0]?.quantity || "0", 10),
+        quantity: parseInt(pdfLines[0]?.quantity || "0", 10),
         totalPullets: totalQty,
         breed: firstBreed,
         age: firstAge,

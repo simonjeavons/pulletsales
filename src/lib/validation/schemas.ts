@@ -146,6 +146,7 @@ export const despatchSchema = z.object({
   advice_date: z.string().optional().or(z.literal("")),
   is_delivery_amended: z.boolean().default(false),
   despatch_notes: z.string().optional().or(z.literal("")),
+  consolidate_invoice: z.boolean().default(false),
   lines: z.array(despatchLineSchema).min(1, "At least one line is required"),
   extra_ids: z.array(z.string().uuid()).default([]),
 });

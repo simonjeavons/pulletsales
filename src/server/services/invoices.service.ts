@@ -267,7 +267,23 @@ export async function getInvoicePdfData(invoiceId: string) {
     despatch = d;
     if (d) {
       const { data: dl } = await db.from("despatch_lines").select("*, breed:breeds(breed_name), rearer:rearers(name)").eq("despatch_id", d.id);
-      despatchLines = dl ?? [];
+      let rawLines = dl ?? [];
+      // Consolidate if flag is set on despatch
+      if (d.consolidate_invoice && rawLines.length > 0) {
+        const grouped = new Map<string, any>();
+        const unlinked: any[] = [];
+        for (const line of rawLines) {
+          if (!line.order_line_id) { unlinked.push(line); continue; }
+          const existing = grouped.get(line.order_line_id);
+          if (existing) {
+            existing.quantity += line.quantity;
+          } else {
+            grouped.set(line.order_line_id, { ...line, rearer: null, rearer_id: null });
+          }
+        }
+        rawLines = [...grouped.values(), ...unlinked];
+      }
+      despatchLines = rawLines;
     }
   }
 
