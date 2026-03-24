@@ -27,6 +27,13 @@ const settingGroups = [
     ],
   },
   {
+    title: "Payment Terms",
+    description: "Default payment terms used when a customer has no specific terms set.",
+    settings: [
+      { key: "payment_terms_days", label: "Default Payment Terms (days)", type: "number" },
+    ],
+  },
+  {
     title: "Food Clause",
     description: "Food clause adjustment calculation settings.",
     settings: [
