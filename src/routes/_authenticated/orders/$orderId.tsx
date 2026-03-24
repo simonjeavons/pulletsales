@@ -668,7 +668,7 @@ function DespatchTab({
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Despatch Details
         </h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <FormField label="Actual Delivery Date" required>
             <input
               type="date"
@@ -699,38 +699,18 @@ function DespatchTab({
               ))}
             </select>
           </FormField>
-        </div>
-      </div>
-
-      {/* Delivery Advice Text */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Delivery Advice Text
-        </h3>
-        <p className="text-xs text-gray-400 mb-4">
-          Edit the salutation and body text that will appear on the Delivery Advice PDF. Placeholders are auto-filled from order data.
-        </p>
-        <div className="grid grid-cols-2 gap-4 mb-4">
           <FormField label="Advice Date">
             <input type="date" value={adviceDate} onChange={(e) => setAdviceDate(e.target.value)} className={inputClasses} />
           </FormField>
-          <div className="flex items-end gap-4">
-            <label className="flex items-center gap-2 text-sm pb-2">
-              <input type="checkbox" checked={isDeliveryAmended} onChange={(e) => setIsDeliveryAmended(e.target.checked)} className={checkboxClasses} />
-              Delivery Amended
-            </label>
-          </div>
         </div>
-        <FormField label="Salutation" className="mb-4">
-          <input type="text" value={adviceSalutation} onChange={(e) => setAdviceSalutation(e.target.value)} className={inputClasses} placeholder="e.g. Dear Mr. Smith" />
-        </FormField>
-        <FormField label="Body Text">
-          <textarea value={adviceBody} onChange={(e) => setAdviceBody(e.target.value)} className={textareaClasses} rows={4} placeholder="With further reference to your order..." />
-        </FormField>
-        <FormField label="Despatch Notes" className="mt-4">
-          <textarea value={despatchNotes} onChange={(e) => setDespatchNotes(e.target.value)} className={textareaClasses} rows={2} placeholder="Additional notes for the despatch..." />
-        </FormField>
+        <div className="mt-3">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={isDeliveryAmended} onChange={(e) => setIsDeliveryAmended(e.target.checked)} className={checkboxClasses} />
+            Delivery Amended
+          </label>
+        </div>
       </div>
+
 
       {/* Despatch Lines */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -933,10 +913,10 @@ function DespatchTab({
         })()}
       </div>
 
-      {/* Despatch-level extras */}
+      {/* Final Order Extras */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Despatch-Level Extras
+          Final Order Extras
         </h3>
         <div className="flex flex-wrap gap-4">
           {extras.map((ex) => (
@@ -960,6 +940,20 @@ function DespatchTab({
             </label>
           ))}
         </div>
+      </div>
+
+      {/* Despatch Notes */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Despatch Notes
+        </h3>
+        <textarea
+          value={despatchNotes}
+          onChange={(e) => setDespatchNotes(e.target.value)}
+          className={textareaClasses}
+          rows={3}
+          placeholder="Any additional notes for this despatch..."
+        />
       </div>
 
       {/* Actions */}
