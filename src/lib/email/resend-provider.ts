@@ -7,7 +7,7 @@ export class ResendProvider implements EmailProvider {
 
   constructor() {
     this.client = new Resend(process.env.RESEND_API_KEY);
-    this.from = process.env.EMAIL_FROM || "noreply@pulletsales.com";
+    this.from = process.env.EMAIL_FROM || "Country Fresh Pullets <noreply@lloydsanimalfeeds.com>";
   }
 
   async send(message: EmailMessage) {
