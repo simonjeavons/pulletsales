@@ -117,7 +117,10 @@ export async function requestPasswordReset(request: Request, email: string) {
     return { error: linkError.message };
   }
 
-  const resetUrl = linkData.properties?.action_link || `${APP_URL}/auth/reset-password`;
+  const rawResetLink = linkData.properties?.action_link || (linkData as any).action_link || "";
+  const resetUrl = rawResetLink
+    ? rawResetLink.replace(/redirect_to=[^&]*/, `redirect_to=${encodeURIComponent(`${APP_URL}/auth/reset-password`)}`)
+    : `${APP_URL}/auth/reset-password`;
 
   // Send via Resend using DB template
   await sendTemplatedAuthEmail({
@@ -207,7 +210,12 @@ export async function inviteUser(params: {
   }
 
   // Send invite email via Resend
-  const setPasswordUrl = linkData.properties?.action_link || `${APP_URL}/auth/set-password`;
+  // The action_link may be in properties.action_link or at the top level
+  const rawLink = linkData.properties?.action_link || (linkData as any).action_link || "";
+  // Replace any localhost redirect with our production URL
+  const setPasswordUrl = rawLink
+    ? rawLink.replace(/redirect_to=[^&]*/, `redirect_to=${encodeURIComponent(`${APP_URL}/auth/set-password`)}`)
+    : `${APP_URL}/auth/set-password`;
 
   const emailResult = await sendInviteEmail({
     to: params.email,
@@ -251,7 +259,10 @@ export async function resendInvite(profileId: string) {
     return { error: linkError.message };
   }
 
-  const setPasswordUrl = linkData.properties?.action_link || `${APP_URL}/auth/set-password`;
+  const rawLink = linkData.properties?.action_link || (linkData as any).action_link || "";
+  const setPasswordUrl = rawLink
+    ? rawLink.replace(/redirect_to=[^&]*/, `redirect_to=${encodeURIComponent(`${APP_URL}/auth/set-password`)}`)
+    : `${APP_URL}/auth/set-password`;
 
   const emailResult = await sendInviteEmail({
     to: profile.email,
