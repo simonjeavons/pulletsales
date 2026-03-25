@@ -113,7 +113,7 @@ export async function getOrder(id: string): Promise<OrderWithRelations> {
     .select(`
       *,
       customer:customers(*),
-      rep:reps(id, name),
+      rep:reps(id, name, email),
       delivery_address:customer_delivery_addresses(*)
     `)
     .eq("id", id)
