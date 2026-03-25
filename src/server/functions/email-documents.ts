@@ -6,7 +6,7 @@ import * as emailDocService from "~/server/services/email-documents.service";
  * PDFs are generated client-side, base64-encoded, and sent here for emailing.
  */
 export const sendDocumentEmailFn = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     (data: {
       to: string[];
       subject: string;
