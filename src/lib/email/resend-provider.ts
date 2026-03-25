@@ -12,12 +12,23 @@ export class ResendProvider implements EmailProvider {
 
   async send(message: EmailMessage) {
     try {
+      const to = Array.isArray(message.to) ? message.to : [message.to];
+
       const { error } = await this.client.emails.send({
         from: this.from,
-        to: message.to,
+        to,
         subject: message.subject,
         html: message.html,
         text: message.text,
+        attachments: message.attachments?.map((a) => ({
+          filename: a.filename,
+          content: a.content instanceof Buffer
+            ? a.content
+            : a.content instanceof Uint8Array
+              ? Buffer.from(a.content)
+              : Buffer.from(a.content, "base64"),
+          content_type: a.contentType || "application/pdf",
+        })),
       });
 
       if (error) {

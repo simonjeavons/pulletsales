@@ -62,6 +62,11 @@ function OrdersListPage() {
       ),
     },
     {
+      key: "created",
+      header: "Order Date",
+      render: (o: any) => new Date(o.created_at).toLocaleDateString(),
+    },
+    {
       key: "customer",
       header: "Customer",
       render: (o: any) => o.customer?.company_name || "—",
@@ -80,6 +85,29 @@ function OrdersListPage() {
       render: (o: any) => o.rep?.name || "—",
     },
     {
+      key: "qty",
+      header: "Qty",
+      className: "text-right",
+      render: (o: any) => {
+        const qty = (o.order_lines ?? []).reduce((s: number, l: any) => s + (l.quantity || 0), 0);
+        return qty > 0 ? qty.toLocaleString() : "—";
+      },
+    },
+    {
+      key: "value",
+      header: "Value",
+      className: "text-right",
+      render: (o: any) => {
+        const total = (o.order_lines ?? []).reduce(
+          (s: number, l: any) => s + (l.quantity || 0) * (Number(l.price) || 0),
+          0
+        );
+        return total > 0
+          ? `£${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : "—";
+      },
+    },
+    {
       key: "status",
       header: "Status",
       render: (o: any) => (
@@ -87,11 +115,6 @@ function OrdersListPage() {
           {statusLabels[o.status as OrderStatus] || o.status}
         </Badge>
       ),
-    },
-    {
-      key: "created",
-      header: "Created",
-      render: (o: any) => new Date(o.created_at).toLocaleDateString(),
     },
     {
       key: "actions",

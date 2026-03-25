@@ -67,7 +67,7 @@ export async function listOrders(filters: OrderListFilters = {}) {
   let query = admin()
     .from("orders")
     .select(
-      "*, customer:customers(id, company_name, customer_unique_id), rep:reps(id, name)",
+      "*, customer:customers(id, company_name, customer_unique_id), rep:reps(id, name), order_lines(quantity, price)",
       { count: "exact" }
     )
     .order("order_number", { ascending: false })

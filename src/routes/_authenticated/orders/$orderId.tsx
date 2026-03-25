@@ -27,6 +27,7 @@ import { OrderConfirmationPdf } from "~/lib/pdf/OrderConfirmationPdf";
 import { DeliveryAdvicePdf } from "~/lib/pdf/DeliveryAdvicePdf";
 import { DespatchNotePdf } from "~/lib/pdf/DespatchNotePdf";
 import { SalmonellaFormPdf } from "~/lib/pdf/SalmonellaFormPdf";
+import { EmailModal, type EmailRecipient, type EmailAttachment as EmailAtt } from "~/components/ui/EmailModal";
 
 export const Route = createFileRoute("/_authenticated/orders/$orderId")({
   component: OrderDetailPage,
@@ -68,6 +69,17 @@ async function downloadPdf(element: React.ReactElement, filename: string) {
   }
 }
 
+async function pdfToBase64(element: React.ReactElement): Promise<string> {
+  const blob = await pdf(element).toBlob();
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 function OrderDetailPage() {
   const { orderId } = Route.useParams();
   const qc = useQueryClient();
@@ -75,6 +87,13 @@ function OrderDetailPage() {
   const [confirmAction, setConfirmAction] = useState<{
     status: OrderStatus;
     label: string;
+  } | null>(null);
+  const [emailModal, setEmailModal] = useState<{
+    title: string;
+    subject: string;
+    recipients: EmailRecipient[];
+    attachments: EmailAtt[];
+    body?: string;
   } | null>(null);
 
   const { data: order, isLoading } = useQuery({
@@ -107,47 +126,79 @@ function OrderDetailPage() {
   const isAmended = order.status === "amended";
   const canGenerateConfirmationPdf = ["confirmed", "amended", "pending_despatch", "ready_for_despatch", "completed", "invoiced"].includes(order.status);
 
-  const handleOrderConfirmationPdf = () => {
+  // Build order confirmation PDF element (reused for download + email)
+  const buildOrderConfirmationPdf = () => {
     const repName = order.rep?.name || "";
     const isAmendedPdf = order.status === "amended" || (order.amendment_count ?? 0) > 0;
     const confirmDate = order.confirmed_at
       ? new Date(order.confirmed_at).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
       : new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
 
-    downloadPdf(
-      <OrderConfirmationPdf data={{
-        isAmended: isAmendedPdf,
-        date: confirmDate,
-        orderNumber: order.order_number,
-        repName,
-        customer: {
-          company_name: order.customer?.company_name || "",
-          address_line_1: order.customer?.address_line_1 || undefined,
-          address_line_2: order.customer?.address_line_2 || undefined,
-          town_city: order.customer?.town_city || undefined,
-          post_code: order.customer?.post_code || undefined,
+    return <OrderConfirmationPdf data={{
+      isAmended: isAmendedPdf,
+      date: confirmDate,
+      orderNumber: order.order_number,
+      repName,
+      customer: {
+        company_name: order.customer?.company_name || "",
+        address_line_1: order.customer?.address_line_1 || undefined,
+        address_line_2: order.customer?.address_line_2 || undefined,
+        town_city: order.customer?.town_city || undefined,
+        post_code: order.customer?.post_code || undefined,
+      },
+      lines: order.lines.map((l, i) => ({
+        itemNumber: i + 1,
+        deliveryDate: order.requested_delivery_week_commencing
+          ? new Date(order.requested_delivery_week_commencing).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
+          : "TBC",
+        quantity: l.quantity,
+        breed: l.breed?.breed_name || "",
+        age: l.age_weeks,
+        price: Number(l.price),
+        foodClause: Number(l.food_clause_value),
+        deliveryAddress: order.delivery_address ? {
+          label: order.delivery_address.label,
+          address_line_1: order.delivery_address.address_line_1 || undefined,
+          town_city: order.delivery_address.town_city || undefined,
+          post_code: order.delivery_address.post_code || undefined,
+        } : undefined,
+        extras: l.extras.map((e) => e.name),
+      })),
+    }} />;
+  };
+
+  const handleOrderConfirmationPdf = () => {
+    downloadPdf(buildOrderConfirmationPdf(), `Order_Confirmation_${order.order_number}.pdf`);
+  };
+
+  // Build email recipients from order data
+  const getOrderEmailRecipients = (): EmailRecipient[] => {
+    const recipients: EmailRecipient[] = [];
+    if (order.rep?.email) {
+      recipients.push({ label: "Rep", email: order.rep.email });
+    }
+    // Customer email from customer record
+    if ((order.customer as any)?.email) {
+      recipients.push({ label: "Customer", email: (order.customer as any).email });
+    }
+    return recipients;
+  };
+
+  const handleEmailConfirmation = () => {
+    setEmailModal({
+      title: "Email Order Confirmation",
+      subject: `Order Confirmation ${order.order_number} — ${order.customer?.company_name || ""}`,
+      recipients: getOrderEmailRecipients(),
+      body: `Please find attached the order confirmation for Order ${order.order_number}.`,
+      attachments: [
+        {
+          label: "Order Confirmation",
+          filename: `Order_Confirmation_${order.order_number}.pdf`,
+          generateBase64: () => pdfToBase64(buildOrderConfirmationPdf()),
+          selected: true,
         },
-        lines: order.lines.map((l, i) => ({
-          itemNumber: i + 1,
-          deliveryDate: order.requested_delivery_week_commencing
-            ? new Date(order.requested_delivery_week_commencing).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
-            : "TBC",
-          quantity: l.quantity,
-          breed: l.breed?.breed_name || "",
-          age: l.age_weeks,
-          price: Number(l.price),
-          foodClause: Number(l.food_clause_value),
-          deliveryAddress: order.delivery_address ? {
-            label: order.delivery_address.label,
-            address_line_1: order.delivery_address.address_line_1 || undefined,
-            town_city: order.delivery_address.town_city || undefined,
-            post_code: order.delivery_address.post_code || undefined,
-          } : undefined,
-          extras: l.extras.map((e) => e.name),
-        })),
-      }} />,
-      `Order_Confirmation_${order.order_number}.pdf`
-    );
+      ],
+    });
   };
 
   return (
@@ -161,9 +212,14 @@ function OrderDetailPage() {
               {statusLabels[order.status]}
             </Badge>
             {canGenerateConfirmationPdf && (
-              <Button size="sm" variant="secondary" onClick={handleOrderConfirmationPdf}>
-                📄 Order Confirmation PDF
-              </Button>
+              <>
+                <Button size="sm" variant="secondary" onClick={handleOrderConfirmationPdf}>
+                  📄 Order Confirmation
+                </Button>
+                <Button size="sm" variant="secondary" onClick={handleEmailConfirmation}>
+                  ✉️ Email Confirmation
+                </Button>
+              </>
             )}
             {canConfirm && (
               <Button
@@ -240,6 +296,18 @@ function OrderDetailPage() {
         confirmVariant={confirmAction?.status === "cancelled" ? "danger" : "primary"}
         loading={transitionMut.isPending}
       />
+
+      {emailModal && (
+        <EmailModal
+          open={true}
+          onClose={() => setEmailModal(null)}
+          title={emailModal.title}
+          defaultSubject={emailModal.subject}
+          recipients={emailModal.recipients}
+          attachments={emailModal.attachments}
+          defaultBody={emailModal.body}
+        />
+      )}
     </div>
   );
 }
@@ -376,6 +444,13 @@ function DespatchTab({
   const [transporters, setTransporters] = useState<any[]>([]);
   const [extras, setExtras] = useState<any[]>([]);
   const [breeds, setBreeds] = useState<any[]>([]);
+  const [despatchEmailModal, setDespatchEmailModal] = useState<{
+    title: string;
+    subject: string;
+    recipients: EmailRecipient[];
+    attachments: EmailAtt[];
+    body?: string;
+  } | null>(null);
 
   const [consolidateAdvice, setConsolidateAdvice] = useState(false);
   const [consolidateDespatch, setConsolidateDespatch] = useState(false);
@@ -581,6 +656,91 @@ function DespatchTab({
       },
     });
   };
+
+  // Build email recipients from order data
+  const getDespatchEmailRecipients = (): EmailRecipient[] => {
+    const recipients: EmailRecipient[] = [];
+    if (order.rep?.email) {
+      recipients.push({ label: "Rep", email: order.rep.email });
+    }
+    if ((order.customer as any)?.email) {
+      recipients.push({ label: "Customer", email: (order.customer as any).email });
+    }
+    return recipients;
+  };
+
+  function handleEmailDespatchDocs(desp: any) {
+    const buildAdvicePdf = () => {
+      const pdfLines = consolidateAdvice ? consolidateLines(lines) : lines;
+      const totalQty = pdfLines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0);
+      const firstBreed = pdfLines[0]?.breed_name || "Pullets";
+      const firstAge = pdfLines[0]?.age_weeks ? parseInt(pdfLines[0].age_weeks, 10) : null;
+      const wcDate = order.requested_delivery_week_commencing
+        ? new Date(order.requested_delivery_week_commencing).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+        : "TBC";
+      const advDateFormatted = adviceDate
+        ? new Date(adviceDate).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
+        : new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+      const delivDateFormatted = deliveryDate
+        ? new Date(deliveryDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })
+        : "TBC";
+      const transporterName = transporters.find((t) => t.id === transporterId)?.transporter_name || "";
+      return <DeliveryAdvicePdf data={{
+        date: advDateFormatted, orderNumber: order.order_number, repName: order.rep?.name || "",
+        customer: { company_name: order.customer?.company_name || "", address_line_1: order.customer?.address_line_1 || undefined, address_line_2: order.customer?.address_line_2 || undefined, town_city: order.customer?.town_city || undefined, post_code: order.customer?.post_code || undefined },
+        totalQuantity: totalQty, breed: firstBreed, age: firstAge, weekCommencing: wcDate,
+        lines: pdfLines.map((l) => ({
+          deliveryDate: delivDateFormatted, quantity: parseInt(l.quantity || "0", 10), breed: l.breed_name, transporter: transporterName, unloadingTime: unloadingTime || "TBC",
+          deliveryTo: { name: order.delivery_address?.label || order.customer?.company_name || "", address_line_1: order.delivery_address?.address_line_1 || order.customer?.address_line_1 || undefined, address_line_2: order.delivery_address?.address_line_2 || undefined, town_city: order.delivery_address?.town_city || order.customer?.town_city || undefined, post_code: order.delivery_address?.post_code || order.customer?.post_code || undefined },
+        })),
+        extras: extras.filter((e) => despatchExtraIds.includes(e.id)).map((e) => e.name),
+      }} />;
+    };
+
+    const buildDespatchPdf = () => {
+      const pdfLines = consolidateDespatch ? consolidateLines(lines) : lines;
+      const totalQty = pdfLines.reduce((s, l) => s + (parseInt(l.quantity || "0", 10) || 0), 0);
+      const firstBreed = pdfLines[0]?.breed_name || "Pullets";
+      const firstAge = pdfLines[0]?.age_weeks ? parseInt(pdfLines[0].age_weeks, 10) : null;
+      const firstRearer = pdfLines[0]?.rearer_id ? rearers.find((r) => r.id === pdfLines[0].rearer_id)?.name || "" : "";
+      const transporterName = transporters.find((t) => t.id === transporterId)?.transporter_name || "";
+      const delivDateFormatted = deliveryDate
+        ? new Date(deliveryDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })
+        : "TBC";
+      return <DespatchNotePdf data={{
+        despatchNumber: desp.despatch_number || "", orderNumber: order.order_number, repName: order.rep?.name || "",
+        customer: { company_name: order.delivery_address?.label || order.customer?.company_name || "", address_line_1: order.delivery_address?.address_line_1 || order.customer?.address_line_1 || undefined, address_line_2: order.delivery_address?.address_line_2 || undefined, town_city: order.delivery_address?.town_city || order.customer?.town_city || undefined, post_code: order.delivery_address?.post_code || order.customer?.post_code || undefined, phone: undefined },
+        rearerName: firstRearer, quantity: parseInt(pdfLines[0]?.quantity || "0", 10), totalPullets: totalQty, breed: firstBreed, age: firstAge,
+        deliveryDate: delivDateFormatted, unloadingTime: unloadingTime || "TBC", transporter: transporterName,
+        extras: extras.filter((e) => despatchExtraIds.includes(e.id)).map((e) => e.name),
+      }} />;
+    };
+
+    const buildSalmonellaPdf = () => {
+      const firstRearer = lines[0]?.rearer_id ? rearers.find((r) => r.id === lines[0].rearer_id)?.name || "" : "";
+      const firstAge = lines[0]?.age_weeks ? parseInt(lines[0].age_weeks, 10) : null;
+      const transporterName = transporters.find((t) => t.id === transporterId)?.transporter_name || "";
+      const delivDateFormatted = deliveryDate
+        ? new Date(deliveryDate + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
+        : "";
+      return <SalmonellaFormPdf data={{
+        despatchNumber: desp.despatch_number || "", rearerName: firstRearer, customerName: order.customer?.company_name || "",
+        customerPostCode: order.customer?.post_code || order.delivery_address?.post_code || "", transporter: transporterName, age: firstAge, deliveryDate: delivDateFormatted,
+      }} />;
+    };
+
+    setDespatchEmailModal({
+      title: "Email Despatch Documents",
+      subject: `Despatch Documents — Order ${order.order_number} — ${order.customer?.company_name || ""}`,
+      recipients: getDespatchEmailRecipients(),
+      body: `Please find attached the despatch documents for Order ${order.order_number}.`,
+      attachments: [
+        { label: "Delivery Advice", filename: `Delivery_Advice_${order.order_number}.pdf`, generateBase64: () => pdfToBase64(buildAdvicePdf()), selected: true },
+        { label: "Despatch Note", filename: `Despatch_Note_${desp.despatch_number || order.order_number}.pdf`, generateBase64: () => pdfToBase64(buildDespatchPdf()), selected: true },
+        { label: "Salmonella Form", filename: `Salmonella_Form_${desp.despatch_number || order.order_number}.pdf`, generateBase64: () => pdfToBase64(buildSalmonellaPdf()), selected: true },
+      ],
+    });
+  }
 
   if (!canDespatch && !existingDespatch) {
     return (
@@ -1118,9 +1278,29 @@ function DespatchTab({
             >
               📄 Salmonella Form
             </Button>
+            <div className="border-l border-gray-300 mx-1" />
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleEmailDespatchDocs(existingDespatch)}
+            >
+              ✉️ Email Documents
+            </Button>
           </>
         )}
       </div>
+
+      {despatchEmailModal && (
+        <EmailModal
+          open={true}
+          onClose={() => setDespatchEmailModal(null)}
+          title={despatchEmailModal.title}
+          defaultSubject={despatchEmailModal.subject}
+          recipients={despatchEmailModal.recipients}
+          attachments={despatchEmailModal.attachments}
+          defaultBody={despatchEmailModal.body}
+        />
+      )}
     </div>
   );
 

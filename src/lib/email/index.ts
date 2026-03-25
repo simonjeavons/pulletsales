@@ -1,4 +1,4 @@
-import type { EmailProvider } from "./types";
+import type { EmailProvider, EmailMessage, EmailAttachment } from "./types";
 import { ResendProvider } from "./resend-provider";
 
 // ─── Provider singleton ──────────────────────────────────
@@ -14,12 +14,13 @@ function getProvider(): EmailProvider {
 
 // ─── Public API ──────────────────────────────────────────
 export async function sendEmail(params: {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   text?: string;
+  attachments?: EmailAttachment[];
 }) {
   return getProvider().send(params);
 }
 
-export { type EmailProvider, type EmailMessage } from "./types";
+export { type EmailProvider, type EmailMessage, type EmailAttachment } from "./types";
