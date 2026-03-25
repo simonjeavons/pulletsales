@@ -215,7 +215,7 @@ function OrderDetailPage() {
       subject: `Order Confirmation ${order.order_number} — ${order.customer?.company_name || ""}`,
       recipients: getOrderEmailRecipients(),
       body: `Please find attached the order confirmation for Order ${order.order_number}.`,
-      loadTemplate: () => loadTemplate("order_confirmation_customer", orderTemplateVars),
+      loadTemplate: () => loadTemplate("order_confirmation", orderTemplateVars),
       attachments: [
         {
           label: "Order Confirmation",
@@ -771,7 +771,7 @@ function DespatchTab({
       subject: `Despatch Documents — Order ${order.order_number} — ${order.customer?.company_name || ""}`,
       recipients: getDespatchEmailRecipients(),
       body: `Please find attached the despatch documents for Order ${order.order_number}.`,
-      loadTemplate: () => loadTemplate("all_despatch_docs_customer", despatchTemplateVars),
+      loadTemplate: () => loadTemplate("all_despatch_docs", despatchTemplateVars),
       attachments: [
         { label: "Delivery Advice", filename: `Delivery_Advice_${order.order_number}.pdf`, generateBase64: () => pdfToBase64(buildAdvicePdf()), selected: true },
         { label: "Despatch Note", filename: `Despatch_Note_${desp.despatch_number || order.order_number}.pdf`, generateBase64: () => pdfToBase64(buildDespatchPdf()), selected: true },

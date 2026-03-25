@@ -503,7 +503,7 @@ function InvoiceDetailPage() {
           defaultBody={`Please find attached Invoice ${invoice.invoice_number}.`}
           loadTemplate={async () => {
             try {
-              const t = await getEmailTemplateByKeyFn({ data: { key: "invoice_customer" } });
+              const t = await getEmailTemplateByKeyFn({ data: { key: "invoice" } });
               if (!t) return null;
               const vars: Record<string, string> = {
                 invoice_number: String(invoice.invoice_number),
