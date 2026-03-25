@@ -148,10 +148,10 @@ function InvoiceDetailPage() {
     const orderObj = (invoice as any)?.order;
     const customerObj = (invoice as any)?.customer;
     if (orderObj?.rep?.email) {
-      recipients.push({ label: "Rep", email: orderObj.rep.email });
+      recipients.push({ label: "Rep", email: orderObj.rep.email, name: orderObj.rep.name || "Sir/Madam" });
     }
     if (customerObj?.email) {
-      recipients.push({ label: "Customer", email: customerObj.email });
+      recipients.push({ label: "Customer", email: customerObj.email, name: customerObj.contact_name || customerObj.company_name || "Sir/Madam" });
     }
     return recipients;
   };

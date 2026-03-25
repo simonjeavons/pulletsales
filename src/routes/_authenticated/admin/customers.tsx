@@ -95,13 +95,14 @@ function CustomerFormModal({ open, onClose, onSubmit, loading, error, title, def
   const [addr2, setAddr2] = useState(defaults?.address_line_2 || "");
   const [town, setTown] = useState(defaults?.town_city || "");
   const [postCode, setPostCode] = useState(defaults?.post_code || "");
+  const [contactName, setContactName] = useState((defaults as any)?.contact_name || "");
   const [email, setEmail] = useState((defaults as any)?.email || "");
   const [repId, setRepId] = useState(defaults?.rep_id || "");
   const [paymentTerms, setPaymentTerms] = useState(String((defaults as any)?.payment_terms_days ?? "7"));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ customer_unique_id: uid, company_name: companyName, address_line_1: addr1, address_line_2: addr2, town_city: town, post_code: postCode, email: email || undefined, rep_id: repId || undefined, payment_terms_days: parseInt(paymentTerms, 10) || 7, is_active: defaults?.is_active ?? true });
+    onSubmit({ customer_unique_id: uid, company_name: companyName, address_line_1: addr1, address_line_2: addr2, town_city: town, post_code: postCode, contact_name: contactName || undefined, email: email || undefined, rep_id: repId || undefined, payment_terms_days: parseInt(paymentTerms, 10) || 7, is_active: defaults?.is_active ?? true });
   };
 
   return (
@@ -118,7 +119,10 @@ function CustomerFormModal({ open, onClose, onSubmit, loading, error, title, def
           <FormField label="Town / City"><input type="text" value={town} onChange={(e) => setTown(e.target.value)} className={inputClasses} /></FormField>
           <FormField label="Post Code"><input type="text" value={postCode} onChange={(e) => setPostCode(e.target.value)} className={inputClasses} /></FormField>
         </div>
-        <FormField label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClasses} placeholder="customer@example.com" /></FormField>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Contact Name"><input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputClasses} placeholder="e.g. Mr T. Lecount" /></FormField>
+          <FormField label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClasses} placeholder="customer@example.com" /></FormField>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Assigned Rep">
             <select value={repId} onChange={(e) => setRepId(e.target.value)} className={selectClasses}>

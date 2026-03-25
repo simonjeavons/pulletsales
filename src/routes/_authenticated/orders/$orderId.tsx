@@ -177,11 +177,10 @@ function OrderDetailPage() {
   const getOrderEmailRecipients = (): EmailRecipient[] => {
     const recipients: EmailRecipient[] = [];
     if (order.rep?.email) {
-      recipients.push({ label: "Rep", email: order.rep.email });
+      recipients.push({ label: "Rep", email: order.rep.email, name: order.rep.name || "Sir/Madam" });
     }
-    // Customer email from customer record
     if ((order.customer as any)?.email) {
-      recipients.push({ label: "Customer", email: (order.customer as any).email });
+      recipients.push({ label: "Customer", email: (order.customer as any).email, name: (order.customer as any)?.contact_name || order.customer?.company_name || "Sir/Madam" });
     }
     return recipients;
   };
@@ -689,10 +688,10 @@ function DespatchTab({
   const getDespatchEmailRecipients = (): EmailRecipient[] => {
     const recipients: EmailRecipient[] = [];
     if (order.rep?.email) {
-      recipients.push({ label: "Rep", email: order.rep.email });
+      recipients.push({ label: "Rep", email: order.rep.email, name: order.rep.name || "Sir/Madam" });
     }
     if ((order.customer as any)?.email) {
-      recipients.push({ label: "Customer", email: (order.customer as any).email });
+      recipients.push({ label: "Customer", email: (order.customer as any).email, name: (order.customer as any)?.contact_name || order.customer?.company_name || "Sir/Madam" });
     }
     return recipients;
   };

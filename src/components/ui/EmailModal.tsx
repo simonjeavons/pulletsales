@@ -6,6 +6,8 @@ import { Button } from "./Button";
 export interface EmailRecipient {
   label: string;
   email: string;
+  /** Name used to personalise the greeting, e.g. "John Williams" or "Green Valley Farms" */
+  name: string;
 }
 
 export interface EmailAttachment {
@@ -28,16 +30,8 @@ interface EmailModalProps {
   attachments: EmailAttachment[];
   /** Default body text (fallback if no template loaded) */
   defaultBody?: string;
-  /** Async function to load a template — returns { subject, body } with placeholders already replaced */
+  /** Async function to load a template — returns { subject, body } with placeholders already replaced (except {{recipient_name}}) */
   loadTemplate?: () => Promise<{ subject: string; body: string } | null>;
-}
-
-function applyVars(text: string, vars: Record<string, string>): string {
-  let result = text;
-  for (const [key, value] of Object.entries(vars)) {
-    result = result.replaceAll(`{{${key}}}`, value);
-  }
-  return result;
 }
 
 export function EmailModal({
@@ -54,6 +48,7 @@ export function EmailModal({
     recipients.map((r) => r.email)
   );
   const [additionalEmail, setAdditionalEmail] = useState("");
+  const [additionalName, setAdditionalName] = useState("");
   const [selectedAttachments, setSelectedAttachments] = useState<string[]>(
     attachments.filter((a) => a.selected !== false).map((a) => a.label)
   );
@@ -86,12 +81,22 @@ export function EmailModal({
     mutationFn: async () => {
       setError("");
 
-      const allRecipients = [...selectedRecipients];
-      if (additionalEmail.trim()) {
-        allRecipients.push(additionalEmail.trim());
+      // Build list of recipients with names
+      const recipientsToSend: Array<{ email: string; name: string }> = [];
+
+      for (const email of selectedRecipients) {
+        const r = recipients.find((rec) => rec.email === email);
+        if (r) recipientsToSend.push({ email: r.email, name: r.name });
       }
 
-      if (allRecipients.length === 0) {
+      if (additionalEmail.trim()) {
+        recipientsToSend.push({
+          email: additionalEmail.trim(),
+          name: additionalName.trim() || "Sir/Madam",
+        });
+      }
+
+      if (recipientsToSend.length === 0) {
         throw new Error("Select at least one recipient");
       }
 
@@ -99,7 +104,7 @@ export function EmailModal({
         throw new Error("Select at least one document to attach");
       }
 
-      // Generate PDFs for selected attachments
+      // Generate PDFs once (shared across all recipients)
       const pdfAttachments: Array<{ filename: string; base64: string }> = [];
       for (const label of selectedAttachments) {
         const att = attachments.find((a) => a.label === label);
@@ -109,14 +114,31 @@ export function EmailModal({
         }
       }
 
-      return sendDocumentEmailFn({
-        data: {
-          to: allRecipients,
-          subject,
-          body: `<p>${body.replace(/\n/g, "<br/>")}</p>`,
-          attachments: pdfAttachments,
-        },
-      });
+      // Send individually to each recipient with personalised greeting
+      const errors: string[] = [];
+      for (const recipient of recipientsToSend) {
+        const personalisedBody = body.replaceAll("{{recipient_name}}", recipient.name);
+        const htmlBody = `<p>${personalisedBody.replace(/\n/g, "<br/>")}</p>`;
+
+        try {
+          await sendDocumentEmailFn({
+            data: {
+              to: [recipient.email],
+              subject,
+              body: htmlBody,
+              attachments: pdfAttachments,
+            },
+          });
+        } catch (err: any) {
+          errors.push(`${recipient.email}: ${err.message}`);
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Some emails failed:\n${errors.join("\n")}`);
+      }
+
+      return { success: true };
     },
     onSuccess: () => setSent(true),
     onError: (err: any) => setError(err.message),
@@ -136,11 +158,20 @@ export function EmailModal({
     );
   };
 
+  // Preview: show the body with the first selected recipient's name
+  const firstSelected = recipients.find((r) => selectedRecipients.includes(r.email));
+  const previewBody = body.replaceAll("{{recipient_name}}", firstSelected?.name || "Sir/Madam");
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          {selectedRecipients.length > 1 && (
+            <p className="text-xs text-gray-400 mt-1">
+              Each recipient will receive a personalised email with their name in the greeting.
+            </p>
+          )}
         </div>
 
         <div className="px-6 py-4 space-y-4">
@@ -174,7 +205,7 @@ export function EmailModal({
           ) : (
             <>
               {error && (
-                <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">
+                <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200 whitespace-pre-wrap">
                   {error}
                 </div>
               )}
@@ -197,17 +228,25 @@ export function EmailModal({
                         className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
                       />
                       <span className="text-gray-600">{r.label}:</span>
-                      <span className="font-medium">{r.email}</span>
+                      <span className="font-medium">{r.name}</span>
+                      <span className="text-gray-400">{r.email}</span>
                     </label>
                   ))}
                 </div>
-                <div className="mt-2">
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={additionalName}
+                    onChange={(e) => setAdditionalName(e.target.value)}
+                    placeholder="Name..."
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
                   <input
                     type="email"
                     value={additionalEmail}
                     onChange={(e) => setAdditionalEmail(e.target.value)}
-                    placeholder="Additional email address..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    placeholder="Email address..."
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
               </div>
@@ -254,11 +293,16 @@ export function EmailModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Message
+                  {body.includes("{{recipient_name}}") && (
+                    <span className="text-xs text-gray-400 font-normal ml-2">
+                      Preview shows for: {firstSelected?.name || "first recipient"}
+                    </span>
+                  )}
                 </label>
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  rows={3}
+                  rows={6}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
