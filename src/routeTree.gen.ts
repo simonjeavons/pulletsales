@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminRepsRouteImport } from './routes/_authenticated/admin/reps'
 import { Route as AuthenticatedAdminRearersRouteImport } from './routes/_authenticated/admin/rearers'
 import { Route as AuthenticatedAdminExtrasRouteImport } from './routes/_authenticated/admin/extras'
+import { Route as AuthenticatedAdminEmailTemplatesRouteImport } from './routes/_authenticated/admin/email-templates'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated/admin/customers'
 import { Route as AuthenticatedAdminBreedsRouteImport } from './routes/_authenticated/admin/breeds'
 
@@ -147,6 +148,12 @@ const AuthenticatedAdminExtrasRoute =
     path: '/extras',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminEmailTemplatesRoute =
+  AuthenticatedAdminEmailTemplatesRouteImport.update({
+    id: '/email-templates',
+    path: '/email-templates',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminCustomersRoute =
   AuthenticatedAdminCustomersRouteImport.update({
     id: '/customers',
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/auth/set-password': typeof AuthSetPasswordRoute
   '/admin/breeds': typeof AuthenticatedAdminBreedsRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
+  '/admin/email-templates': typeof AuthenticatedAdminEmailTemplatesRoute
   '/admin/extras': typeof AuthenticatedAdminExtrasRoute
   '/admin/rearers': typeof AuthenticatedAdminRearersRoute
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
@@ -194,6 +202,7 @@ export interface FileRoutesByTo {
   '/auth/set-password': typeof AuthSetPasswordRoute
   '/admin/breeds': typeof AuthenticatedAdminBreedsRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
+  '/admin/email-templates': typeof AuthenticatedAdminEmailTemplatesRoute
   '/admin/extras': typeof AuthenticatedAdminExtrasRoute
   '/admin/rearers': typeof AuthenticatedAdminRearersRoute
   '/admin/reps': typeof AuthenticatedAdminRepsRoute
@@ -220,6 +229,7 @@ export interface FileRoutesById {
   '/auth/set-password': typeof AuthSetPasswordRoute
   '/_authenticated/admin/breeds': typeof AuthenticatedAdminBreedsRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
+  '/_authenticated/admin/email-templates': typeof AuthenticatedAdminEmailTemplatesRoute
   '/_authenticated/admin/extras': typeof AuthenticatedAdminExtrasRoute
   '/_authenticated/admin/rearers': typeof AuthenticatedAdminRearersRoute
   '/_authenticated/admin/reps': typeof AuthenticatedAdminRepsRoute
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/auth/set-password'
     | '/admin/breeds'
     | '/admin/customers'
+    | '/admin/email-templates'
     | '/admin/extras'
     | '/admin/rearers'
     | '/admin/reps'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/auth/set-password'
     | '/admin/breeds'
     | '/admin/customers'
+    | '/admin/email-templates'
     | '/admin/extras'
     | '/admin/rearers'
     | '/admin/reps'
@@ -295,6 +307,7 @@ export interface FileRouteTypes {
     | '/auth/set-password'
     | '/_authenticated/admin/breeds'
     | '/_authenticated/admin/customers'
+    | '/_authenticated/admin/email-templates'
     | '/_authenticated/admin/extras'
     | '/_authenticated/admin/rearers'
     | '/_authenticated/admin/reps'
@@ -468,6 +481,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminExtrasRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/email-templates': {
+      id: '/_authenticated/admin/email-templates'
+      path: '/email-templates'
+      fullPath: '/admin/email-templates'
+      preLoaderRoute: typeof AuthenticatedAdminEmailTemplatesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/customers': {
       id: '/_authenticated/admin/customers'
       path: '/customers'
@@ -488,6 +508,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBreedsRoute: typeof AuthenticatedAdminBreedsRoute
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
+  AuthenticatedAdminEmailTemplatesRoute: typeof AuthenticatedAdminEmailTemplatesRoute
   AuthenticatedAdminExtrasRoute: typeof AuthenticatedAdminExtrasRoute
   AuthenticatedAdminRearersRoute: typeof AuthenticatedAdminRearersRoute
   AuthenticatedAdminRepsRoute: typeof AuthenticatedAdminRepsRoute
@@ -501,6 +522,7 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBreedsRoute: AuthenticatedAdminBreedsRoute,
   AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
+  AuthenticatedAdminEmailTemplatesRoute: AuthenticatedAdminEmailTemplatesRoute,
   AuthenticatedAdminExtrasRoute: AuthenticatedAdminExtrasRoute,
   AuthenticatedAdminRearersRoute: AuthenticatedAdminRearersRoute,
   AuthenticatedAdminRepsRoute: AuthenticatedAdminRepsRoute,

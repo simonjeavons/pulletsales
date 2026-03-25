@@ -28,6 +28,7 @@ import { DeliveryAdvicePdf } from "~/lib/pdf/DeliveryAdvicePdf";
 import { DespatchNotePdf } from "~/lib/pdf/DespatchNotePdf";
 import { SalmonellaFormPdf } from "~/lib/pdf/SalmonellaFormPdf";
 import { EmailModal, type EmailRecipient, type EmailAttachment as EmailAtt } from "~/components/ui/EmailModal";
+import { getEmailTemplateByKeyFn } from "~/server/functions/email-templates";
 
 export const Route = createFileRoute("/_authenticated/orders/$orderId")({
   component: OrderDetailPage,
@@ -94,6 +95,7 @@ function OrderDetailPage() {
     recipients: EmailRecipient[];
     attachments: EmailAtt[];
     body?: string;
+    loadTemplate?: () => Promise<{ subject: string; body: string } | null>;
   } | null>(null);
 
   const { data: order, isLoading } = useQuery({
@@ -184,12 +186,36 @@ function OrderDetailPage() {
     return recipients;
   };
 
+  const loadTemplate = async (key: string, vars: Record<string, string>) => {
+    try {
+      const t = await getEmailTemplateByKeyFn({ data: { key } });
+      if (!t) return null;
+      let subject = t.subject;
+      let body = t.body;
+      for (const [k, v] of Object.entries(vars)) {
+        subject = subject.replaceAll(`{{${k}}}`, v);
+        body = body.replaceAll(`{{${k}}}`, v);
+      }
+      return { subject, body };
+    } catch { return null; }
+  };
+
+  const orderTemplateVars = {
+    order_number: String(order.order_number),
+    customer_name: order.customer?.company_name || "",
+    rep_name: order.rep?.name || "",
+    delivery_date: order.requested_delivery_week_commencing
+      ? new Date(order.requested_delivery_week_commencing).toLocaleDateString("en-GB")
+      : "TBC",
+  };
+
   const handleEmailConfirmation = () => {
     setEmailModal({
       title: "Email Order Confirmation",
       subject: `Order Confirmation ${order.order_number} — ${order.customer?.company_name || ""}`,
       recipients: getOrderEmailRecipients(),
       body: `Please find attached the order confirmation for Order ${order.order_number}.`,
+      loadTemplate: () => loadTemplate("order_confirmation_customer", orderTemplateVars),
       attachments: [
         {
           label: "Order Confirmation",
@@ -306,6 +332,7 @@ function OrderDetailPage() {
           recipients={emailModal.recipients}
           attachments={emailModal.attachments}
           defaultBody={emailModal.body}
+          loadTemplate={emailModal.loadTemplate}
         />
       )}
     </div>
@@ -450,6 +477,7 @@ function DespatchTab({
     recipients: EmailRecipient[];
     attachments: EmailAtt[];
     body?: string;
+    loadTemplate?: () => Promise<{ subject: string; body: string } | null>;
   } | null>(null);
 
   const [consolidateAdvice, setConsolidateAdvice] = useState(false);
@@ -729,11 +757,21 @@ function DespatchTab({
       }} />;
     };
 
+    const despatchTemplateVars = {
+      order_number: String(order.order_number),
+      customer_name: order.customer?.company_name || "",
+      rep_name: order.rep?.name || "",
+      delivery_date: deliveryDate
+        ? new Date(deliveryDate).toLocaleDateString("en-GB")
+        : "TBC",
+    };
+
     setDespatchEmailModal({
       title: "Email Despatch Documents",
       subject: `Despatch Documents — Order ${order.order_number} — ${order.customer?.company_name || ""}`,
       recipients: getDespatchEmailRecipients(),
       body: `Please find attached the despatch documents for Order ${order.order_number}.`,
+      loadTemplate: () => loadTemplate("all_despatch_docs_customer", despatchTemplateVars),
       attachments: [
         { label: "Delivery Advice", filename: `Delivery_Advice_${order.order_number}.pdf`, generateBase64: () => pdfToBase64(buildAdvicePdf()), selected: true },
         { label: "Despatch Note", filename: `Despatch_Note_${desp.despatch_number || order.order_number}.pdf`, generateBase64: () => pdfToBase64(buildDespatchPdf()), selected: true },
@@ -1299,6 +1337,8 @@ function DespatchTab({
           recipients={despatchEmailModal.recipients}
           attachments={despatchEmailModal.attachments}
           defaultBody={despatchEmailModal.body}
+          templateKey={despatchEmailModal.templateKey}
+          templateVars={despatchEmailModal.templateVars}
         />
       )}
     </div>

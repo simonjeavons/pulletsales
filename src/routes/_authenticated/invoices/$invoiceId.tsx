@@ -13,6 +13,8 @@ import { PageHeader } from "~/components/ui/PageHeader";
 import { Button } from "~/components/ui/Button";
 import { Badge } from "~/components/ui/Badge";
 import { FormField, inputClasses } from "~/components/forms/FormField";
+import { EmailModal, type EmailRecipient, type EmailAttachment as EmailAtt } from "~/components/ui/EmailModal";
+import { getEmailTemplateByKeyFn } from "~/server/functions/email-templates";
 import type { InvoiceStatus } from "~/types/database";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
@@ -139,6 +141,33 @@ function InvoiceDetailPage() {
     }
   };
 
+  const [showEmailModal, setShowEmailModal] = useState(false);
+
+  const getInvoiceEmailRecipients = (): EmailRecipient[] => {
+    const recipients: EmailRecipient[] = [];
+    const orderObj = (invoice as any)?.order;
+    const customerObj = (invoice as any)?.customer;
+    if (orderObj?.rep?.email) {
+      recipients.push({ label: "Rep", email: orderObj.rep.email });
+    }
+    if (customerObj?.email) {
+      recipients.push({ label: "Customer", email: customerObj.email });
+    }
+    return recipients;
+  };
+
+  const generateInvoiceBase64 = async (): Promise<string> => {
+    const data = pdfData || (await getInvoicePdfDataFn({ data: { invoiceId } }));
+    const blob = await pdf(<InvoicePdf data={data} />).toBlob();
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  };
+
   if (isLoading || !invoice) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -169,6 +198,9 @@ function InvoiceDetailPage() {
             {invoice.exported_at && <Badge variant="success">Exported</Badge>}
             <Button variant="secondary" size="sm" onClick={handlePrintPdf}>
               📄 Print Invoice
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowEmailModal(true)}>
+              ✉️ Email Invoice
             </Button>
             {isDraft && (
               <Button size="sm" onClick={() => finaliseMut.mutate({ data: { id: invoiceId } })} loading={finaliseMut.isPending}>
@@ -452,6 +484,44 @@ function InvoiceDetailPage() {
       <Link to="/invoices" className="text-sm text-brand-600 hover:text-brand-700 font-medium">
         ← Back to Invoices
       </Link>
+
+      {showEmailModal && (
+        <EmailModal
+          open={true}
+          onClose={() => setShowEmailModal(false)}
+          title="Email Invoice"
+          defaultSubject={`Invoice ${invoice.invoice_number} — ${(invoice as any).customer?.company_name || ""}`}
+          recipients={getInvoiceEmailRecipients()}
+          attachments={[
+            {
+              label: "Invoice",
+              filename: `Invoice_${invoice.invoice_number}.pdf`,
+              generateBase64: generateInvoiceBase64,
+              selected: true,
+            },
+          ]}
+          defaultBody={`Please find attached Invoice ${invoice.invoice_number}.`}
+          loadTemplate={async () => {
+            try {
+              const t = await getEmailTemplateByKeyFn({ data: { key: "invoice_customer" } });
+              if (!t) return null;
+              const vars: Record<string, string> = {
+                invoice_number: String(invoice.invoice_number),
+                order_number: String((invoice as any).order?.order_number || ""),
+                customer_name: (invoice as any).customer?.company_name || "",
+                rep_name: (invoice as any).order?.rep?.name || "",
+              };
+              let subject = t.subject;
+              let body = t.body;
+              for (const [k, v] of Object.entries(vars)) {
+                subject = subject.replaceAll(`{{${k}}}`, v);
+                body = body.replaceAll(`{{${k}}}`, v);
+              }
+              return { subject, body };
+            } catch { return null; }
+          }}
+        />
+      )}
     </div>
   );
 }

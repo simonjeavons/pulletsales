@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { sendEmail } from "~/lib/email";
+import * as emailDocService from "~/server/services/email-documents.service";
 
 /**
  * Send document PDFs via email.
@@ -18,33 +18,5 @@ export const sendDocumentEmailFn = createServerFn({ method: "POST" })
     }) => data
   )
   .handler(async ({ data }) => {
-    if (!data.to.length) throw new Error("At least one recipient is required");
-    if (!data.subject) throw new Error("Subject is required");
-    if (!data.attachments.length) throw new Error("At least one attachment is required");
-
-    // Validate email addresses
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    for (const email of data.to) {
-      if (!emailRegex.test(email)) {
-        throw new Error(`Invalid email address: ${email}`);
-      }
-    }
-
-    const result = await sendEmail({
-      to: data.to,
-      subject: data.subject,
-      html: data.body,
-      text: data.body.replace(/<[^>]*>/g, ""),
-      attachments: data.attachments.map((a) => ({
-        filename: a.filename,
-        content: a.base64,
-        contentType: "application/pdf",
-      })),
-    });
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to send email");
-    }
-
-    return { success: true };
+    return emailDocService.sendDocumentEmail(data);
   });

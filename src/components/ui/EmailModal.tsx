@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { sendDocumentEmailFn } from "~/server/functions/email-documents";
 import { Button } from "./Button";
@@ -20,14 +20,24 @@ interface EmailModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
-  /** Pre-filled subject line */
+  /** Pre-filled subject line (fallback if no template loaded) */
   defaultSubject: string;
   /** Suggested recipients with checkboxes */
   recipients: EmailRecipient[];
   /** Documents that can be attached */
   attachments: EmailAttachment[];
-  /** Default body text */
+  /** Default body text (fallback if no template loaded) */
   defaultBody?: string;
+  /** Async function to load a template — returns { subject, body } with placeholders already replaced */
+  loadTemplate?: () => Promise<{ subject: string; body: string } | null>;
+}
+
+function applyVars(text: string, vars: Record<string, string>): string {
+  let result = text;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replaceAll(`{{${key}}}`, value);
+  }
+  return result;
 }
 
 export function EmailModal({
@@ -38,6 +48,7 @@ export function EmailModal({
   recipients,
   attachments,
   defaultBody,
+  loadTemplate,
 }: EmailModalProps) {
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>(
     recipients.map((r) => r.email)
@@ -52,6 +63,24 @@ export function EmailModal({
   );
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [templateLoaded, setTemplateLoaded] = useState(false);
+
+  // Load template if loadTemplate provided
+  useEffect(() => {
+    if (!loadTemplate || templateLoaded) return;
+    (async () => {
+      try {
+        const result = await loadTemplate();
+        if (result) {
+          setSubject(result.subject);
+          setBody(result.body);
+        }
+      } catch {
+        // Fall back to defaults — already set
+      }
+      setTemplateLoaded(true);
+    })();
+  }, [loadTemplate, templateLoaded]);
 
   const sendMut = useMutation({
     mutationFn: async () => {

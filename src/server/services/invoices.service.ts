@@ -245,7 +245,7 @@ export async function getInvoice(id: string) {
 
   const { data: invoice, error } = await db
     .from("invoices")
-    .select("*, customer:customers(*), order:orders(order_number, rep:reps(name)), vat_rate:vat_rates(name, rate)")
+    .select("*, customer:customers(*), order:orders(order_number, rep:reps(name, email)), vat_rate:vat_rates(name, rate)")
     .eq("id", id)
     .single();
 
