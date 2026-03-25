@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 import type { Profile } from "~/types/database";
+import { VersionBadge } from "~/components/ui/Changelog";
 
 interface NavItem {
   label: string;
@@ -107,8 +108,8 @@ export function Sidebar({ user }: { user: Profile }) {
         )}
       </nav>
 
-      <div className="px-4 py-3 border-t border-gray-200 text-xs text-gray-400">
-        Lloyds Pullet Sales v1.0
+      <div className="px-4 py-3 border-t border-gray-200">
+        <VersionBadge />
       </div>
     </aside>
   );
