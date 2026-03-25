@@ -16,7 +16,7 @@ const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   amended: ["confirmed", "cancelled"],
   pending_despatch: ["ready_for_despatch", "cancelled"],
   ready_for_despatch: ["completed", "cancelled"],
-  completed: ["invoiced"],
+  completed: ["invoiced", "cancelled"],
   cancelled: [],
   invoiced: [],
 };

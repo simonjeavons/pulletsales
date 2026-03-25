@@ -35,18 +35,27 @@ const statusLabels: Record<OrderStatus, string> = {
 
 function OrdersListPage() {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | "active" | "">("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["orders", search, statusFilter],
+    queryKey: ["orders", search, statusFilter, dateFrom, dateTo],
     queryFn: () =>
       listOrdersFn({
         data: {
           search: search || undefined,
-          status: statusFilter || undefined,
+          status: statusFilter === "active" ? undefined : statusFilter || undefined,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
         },
       }),
   });
+
+  // Filter out cancelled on the client when "Active" is selected
+  const filteredData = statusFilter === "active"
+    ? (data?.data ?? []).filter((o: any) => o.status !== "cancelled")
+    : (data?.data ?? []);
 
   const columns = [
     {
@@ -142,7 +151,7 @@ function OrdersListPage() {
         }
       />
 
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4 items-end">
         <SearchBar
           value={search}
           onChange={setSearch}
@@ -151,21 +160,48 @@ function OrdersListPage() {
         />
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "")}
+          onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "active" | "")}
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Statuses</option>
+          <option value="active">Active (excl. Cancelled)</option>
           {Object.entries(statusLabels).map(([key, label]) => (
             <option key={key} value={key}>
               {label}
             </option>
           ))}
         </select>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-gray-500 uppercase">W/C From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-gray-500 uppercase">To</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => { setDateFrom(""); setDateTo(""); }}
+            className="text-xs text-gray-500 hover:text-gray-700 underline"
+          >
+            Clear dates
+          </button>
+        )}
       </div>
 
       <DataTable
         columns={columns}
-        data={data?.data ?? []}
+        data={filteredData}
         keyExtractor={(o: any) => o.id}
         loading={isLoading}
         emptyMessage="No orders found."

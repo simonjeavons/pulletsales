@@ -124,7 +124,7 @@ function OrderDetailPage() {
 
   const canConfirm = (order.status === "draft" || order.status === "amended") && order.lines.length > 0;
   const canDespatch = ["confirmed", "amended", "pending_despatch", "ready_for_despatch"].includes(order.status);
-  const canCancel = ["draft", "confirmed", "amended"].includes(order.status);
+  const canCancel = order.status !== "cancelled" && order.status !== "invoiced";
   const isAmended = order.status === "amended";
   const canGenerateConfirmationPdf = ["confirmed", "amended", "pending_despatch", "ready_for_despatch", "completed", "invoiced"].includes(order.status);
 
