@@ -13,6 +13,7 @@ interface DataTableProps<T> {
   keyExtractor: (row: T) => string;
   emptyMessage?: string;
   loading?: boolean;
+  onRowClick?: (row: T) => void;
 }
 
 export function DataTable<T>({
@@ -21,6 +22,7 @@ export function DataTable<T>({
   keyExtractor,
   emptyMessage = "No records found.",
   loading = false,
+  onRowClick,
 }: DataTableProps<T>) {
   if (loading) {
     return (
@@ -61,7 +63,8 @@ export function DataTable<T>({
               data.map((row) => (
                 <tr
                   key={keyExtractor(row)}
-                  className="hover:bg-gray-50 transition-colors"
+                  className={`hover:bg-gray-50 transition-colors ${onRowClick ? "cursor-pointer" : ""}`}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
                 >
                   {columns.map((col) => (
                     <td

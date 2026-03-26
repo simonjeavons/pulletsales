@@ -7,6 +7,7 @@ import {
 } from "~/server/functions/email-templates";
 import { PageHeader } from "~/components/ui/PageHeader";
 import { Button } from "~/components/ui/Button";
+import { Modal } from "~/components/ui/Modal";
 import { FormField, inputClasses, textareaClasses } from "~/components/forms/FormField";
 
 export const Route = createFileRoute("/_authenticated/admin/email-templates")({
@@ -16,14 +17,16 @@ export const Route = createFileRoute("/_authenticated/admin/email-templates")({
 const PLACEHOLDERS = [
   { key: "{{order_number}}", desc: "Order number" },
   { key: "{{invoice_number}}", desc: "Invoice number" },
-  { key: "{{customer_name}}", desc: "Customer company name" },
+  { key: "{{customer_name}}", desc: "Customer name" },
   { key: "{{rep_name}}", desc: "Rep name" },
   { key: "{{delivery_date}}", desc: "Delivery date" },
+  { key: "{{name}}", desc: "Recipient name" },
+  { key: "{{action_url}}", desc: "Action link URL" },
 ];
 
 function EmailTemplatesPage() {
   const qc = useQueryClient();
-  const [editId, setEditId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<any>(null);
   const [editSubject, setEditSubject] = useState("");
   const [editBody, setEditBody] = useState("");
 
@@ -36,15 +39,20 @@ function EmailTemplatesPage() {
     mutationFn: updateEmailTemplateFn,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["email-templates"] });
-      setEditId(null);
+      setEditing(null);
     },
   });
 
   const startEdit = (t: any) => {
-    setEditId(t.id);
+    setEditing(t);
     setEditSubject(t.subject);
     setEditBody(t.body);
   };
+
+  // Sort templates alphabetically by label
+  const sorted = [...templates].sort((a: any, b: any) =>
+    (a.label || "").localeCompare(b.label || "")
+  );
 
   if (isLoading) {
     return (
@@ -58,109 +66,94 @@ function EmailTemplatesPage() {
     <div>
       <PageHeader
         title="Email Templates"
-        description="Edit the subject and body for each email type. Use placeholders to insert dynamic data."
+        description="Click a template to edit its subject and body text."
       />
 
-      {/* Placeholder reference */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-6">
-        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">
-          Available Placeholders
-        </p>
-        <div className="flex flex-wrap gap-4 text-sm">
-          {PLACEHOLDERS.map((p) => (
-            <span key={p.key} className="text-blue-700">
-              <code className="bg-blue-100 px-1.5 py-0.5 rounded text-xs font-mono">
-                {p.key}
-              </code>{" "}
-              <span className="text-blue-500">{p.desc}</span>
-            </span>
-          ))}
-        </div>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200 text-left">
+              <th className="px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Template</th>
+              <th className="px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Subject</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {sorted.map((t: any) => (
+              <tr
+                key={t.id}
+                onClick={() => startEdit(t)}
+                className="hover:bg-gray-50 cursor-pointer transition-colors"
+              >
+                <td className="px-5 py-3">
+                  <span className="font-medium text-gray-900">{t.label}</span>
+                </td>
+                <td className="px-5 py-3 text-gray-600">{t.subject}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      <div className="space-y-4">
-        {templates.map((t: any) => (
-          <div
-            key={t.id}
-            className="bg-white rounded-xl border border-gray-200 overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-              <div>
-                <span className="font-medium text-gray-900">{t.label}</span>
-                <span className="text-xs text-gray-400 ml-3 font-mono">
-                  {t.template_key}
+      {/* Edit Modal */}
+      <Modal
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title={`Edit: ${editing?.label || ""}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Placeholder reference */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">
+              Placeholders
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              {PLACEHOLDERS.map((p) => (
+                <span key={p.key} className="text-blue-600">
+                  <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">{p.key}</code>{" "}
+                  <span className="text-blue-400">{p.desc}</span>
                 </span>
-              </div>
-              {editId !== t.id && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => startEdit(t)}
-                >
-                  Edit
-                </Button>
-              )}
+              ))}
             </div>
-
-            {editId === t.id ? (
-              <div className="p-5 space-y-4">
-                <FormField label="Subject">
-                  <input
-                    type="text"
-                    value={editSubject}
-                    onChange={(e) => setEditSubject(e.target.value)}
-                    className={inputClasses}
-                  />
-                </FormField>
-                <FormField label="Body">
-                  <textarea
-                    value={editBody}
-                    onChange={(e) => setEditBody(e.target.value)}
-                    className={textareaClasses + " font-mono text-xs"}
-                    rows={8}
-                  />
-                </FormField>
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() =>
-                      updateMut.mutate({
-                        data: {
-                          id: t.id,
-                          subject: editSubject,
-                          body: editBody,
-                        },
-                      })
-                    }
-                    loading={updateMut.isPending}
-                  >
-                    Save
-                  </Button>
-                  <Button variant="ghost" onClick={() => setEditId(null)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="px-5 py-3 text-sm">
-                <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500 uppercase">
-                    Subject:
-                  </span>{" "}
-                  <span className="text-gray-700">{t.subject}</span>
-                </div>
-                <div>
-                  <span className="text-xs font-medium text-gray-500 uppercase">
-                    Body:
-                  </span>
-                  <pre className="mt-1 text-gray-600 text-xs whitespace-pre-wrap font-sans bg-gray-50 rounded p-3 border border-gray-100">
-                    {t.body}
-                  </pre>
-                </div>
-              </div>
-            )}
           </div>
-        ))}
-      </div>
+
+          <FormField label="Subject">
+            <input
+              type="text"
+              value={editSubject}
+              onChange={(e) => setEditSubject(e.target.value)}
+              className={inputClasses}
+            />
+          </FormField>
+          <FormField label="Body">
+            <textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              className={textareaClasses + " font-mono text-xs"}
+              rows={10}
+            />
+          </FormField>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() =>
+                updateMut.mutate({
+                  data: {
+                    id: editing.id,
+                    subject: editSubject,
+                    body: editBody,
+                  },
+                })
+              }
+              loading={updateMut.isPending}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

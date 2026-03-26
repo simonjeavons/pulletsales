@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listOrdersFn } from "~/server/functions/orders";
@@ -34,6 +34,7 @@ const statusLabels: Record<OrderStatus, string> = {
 };
 
 function OrdersListPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "active" | "">("");
   const [dateFrom, setDateFrom] = useState("");
@@ -62,12 +63,7 @@ function OrdersListPage() {
       key: "order_number",
       header: "Order #",
       render: (o: any) => (
-        <Link
-          to={`/orders/${o.id}`}
-          className="font-medium text-blue-600 hover:text-blue-800"
-        >
-          {o.order_number}
-        </Link>
+        <span className="font-medium text-gray-900">{o.order_number}</span>
       ),
     },
     {
@@ -123,18 +119,6 @@ function OrdersListPage() {
         <Badge variant={statusColors[o.status as OrderStatus] || "neutral"}>
           {statusLabels[o.status as OrderStatus] || o.status}
         </Badge>
-      ),
-    },
-    {
-      key: "actions",
-      header: "",
-      className: "text-right",
-      render: (o: any) => (
-        <Link to={`/orders/${o.id}`}>
-          <Button variant="ghost" size="sm">
-            View
-          </Button>
-        </Link>
       ),
     },
   ];
@@ -205,6 +189,7 @@ function OrdersListPage() {
         keyExtractor={(o: any) => o.id}
         loading={isLoading}
         emptyMessage="No orders found."
+        onRowClick={(o: any) => navigate({ to: `/orders/${o.id}` })}
       />
     </div>
   );

@@ -191,9 +191,7 @@ function InvoicesPage() {
     {
       key: "number", header: "Invoice #",
       render: (inv: any) => (
-        <Link to={`/invoices/${inv.id}`} className="font-medium text-blue-600 hover:text-blue-800">
-          {inv.invoice_number}
-        </Link>
+        <span className="font-medium text-gray-900">{inv.invoice_number}</span>
       ),
     },
     { key: "order", header: "Order", render: (inv: any) => inv.order?.order_number || "Ad-hoc" },
@@ -210,12 +208,7 @@ function InvoicesPage() {
     {
       key: "actions", header: "", className: "text-right",
       render: (inv: any) => (
-        <div className="flex justify-end gap-2">
-          <Link to={`/invoices/${inv.id}`}>
-            <Button variant="ghost" size="sm">View</Button>
-          </Link>
-          <Button variant="ghost" size="sm" onClick={(e: any) => { e.stopPropagation(); handlePrintInvoicePdf(inv.id); }}>📄</Button>
-        </div>
+        <Button variant="ghost" size="sm" onClick={(e: any) => { e.stopPropagation(); handlePrintInvoicePdf(inv.id); }}>📄</Button>
       ),
     },
   ];
@@ -268,7 +261,7 @@ function InvoicesPage() {
         </button>
       </div>
 
-      <DataTable columns={columns} data={data?.data ?? []} keyExtractor={(inv: any) => inv.id} loading={isLoading} emptyMessage="No invoices found." />
+      <DataTable columns={columns} data={data?.data ?? []} keyExtractor={(inv: any) => inv.id} loading={isLoading} emptyMessage="No invoices found." onRowClick={(inv: any) => navigate({ to: `/invoices/${inv.id}` })} />
 
       {/* From Order Modal */}
       <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Invoice from Completed Order">
