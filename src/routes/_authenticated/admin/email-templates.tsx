@@ -49,9 +49,9 @@ function EmailTemplatesPage() {
     setEditBody(t.body);
   };
 
-  // Sort templates alphabetically by label
+  // Sort by sort_order (set in DB), then label as fallback
   const sorted = [...templates].sort((a: any, b: any) =>
-    (a.label || "").localeCompare(b.label || "")
+    (a.sort_order ?? 99) - (b.sort_order ?? 99) || (a.label || "").localeCompare(b.label || "")
   );
 
   if (isLoading) {
