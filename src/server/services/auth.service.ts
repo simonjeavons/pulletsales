@@ -3,7 +3,7 @@ import { sendEmail } from "~/lib/email";
 import { getEmailTemplateByKey } from "~/server/services/email-templates.service";
 import type { Profile, UserRole } from "~/types/database";
 
-const APP_URL = import.meta.env.VITE_APP_URL ?? process.env.VITE_APP_URL ?? "https://pulletsales.simon-jeavons.workers.dev";
+const APP_URL = import.meta.env.VITE_APP_URL ?? process.env.VITE_APP_URL ?? "https://pullets.lloydsanimalfeeds.com";
 const APP_NAME = "Country Fresh Pullets";
 
 /**
