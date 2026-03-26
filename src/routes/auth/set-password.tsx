@@ -45,8 +45,9 @@ function SetPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Lloyds Pullet Sales</h1>
-          <p className="text-gray-500 mt-2">Welcome — set your password to get started</p>
+          <img src="/logo.png" alt="Country Fresh Pullets" className="h-14 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900">Pullet Sales</h1>
+          <p className="text-gray-500 mt-1 text-sm">Welcome — set your password to get started</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
