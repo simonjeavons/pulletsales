@@ -516,7 +516,7 @@ function DespatchTab({
   useEffect(() => {
     async function load() {
       const [t, e, r, b, s] = await Promise.all([
-        supabase.from("transporters").select("id, transporter_name").eq("is_active", true).order("transporter_name"),
+        supabase.from("transporters").select("id, transporter_name, email").eq("is_active", true).order("transporter_name"),
         supabase.from("extras").select("id, name").eq("is_available", true).order("name"),
         supabase.from("rearers").select("id, name").eq("is_active", true).order("name"),
         supabase.from("breeds").select("id, breed_name").eq("is_available", true).order("breed_name"),
@@ -692,6 +692,10 @@ function DespatchTab({
     }
     if ((order.customer as any)?.email) {
       recipients.push({ label: "Customer", email: (order.customer as any).email, name: (order.customer as any)?.contact_name || order.customer?.company_name || "Sir/Madam" });
+    }
+    const transporter = transporters.find((t) => t.id === transporterId);
+    if (transporter?.email) {
+      recipients.push({ label: "Transporter", email: transporter.email, name: transporter.transporter_name || "Sir/Madam" });
     }
     return recipients;
   };
