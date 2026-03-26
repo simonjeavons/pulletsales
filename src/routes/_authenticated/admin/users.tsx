@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listUsersFn, createUserFn, updateUserFn, toggleUserActiveFn, resendInviteFn } from "~/server/functions/users";
+import { listUsersFn, createUserFn, updateUserFn, toggleUserActiveFn, resendInviteFn, deleteUserFn } from "~/server/functions/users";
 import { PageHeader } from "~/components/ui/PageHeader";
 import { Button } from "~/components/ui/Button";
 import { DataTable } from "~/components/ui/DataTable";
@@ -22,6 +22,7 @@ function UsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [toggleTarget, setToggleTarget] = useState<Profile | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["users", search, statusFilter],
@@ -54,6 +55,14 @@ function UsersPage() {
 
   const resendMutation = useMutation({
     mutationFn: resendInviteFn,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteUserFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setDeleteTarget(null);
+    },
   });
 
   const columns = [
@@ -92,6 +101,14 @@ function UsersPage() {
             onClick={() => resendMutation.mutate({ data: { id: u.id } })}
           >
             Resend Invite
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-600 hover:text-red-700"
+            onClick={() => setDeleteTarget(u)}
+          >
+            Delete
           </Button>
         </div>
       ),
@@ -162,6 +179,20 @@ function UsersPage() {
         confirmLabel={toggleTarget?.is_active ? "Deactivate" : "Reactivate"}
         confirmVariant={toggleTarget?.is_active ? "danger" : "primary"}
         loading={toggleMutation.isPending}
+      />
+
+      {/* Delete Confirm */}
+      <ConfirmModal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() =>
+          deleteTarget && deleteMutation.mutate({ data: { id: deleteTarget.id } })
+        }
+        title="Delete User"
+        message={`Are you sure you want to permanently delete ${deleteTarget?.full_name}? This cannot be undone.`}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deleteMutation.isPending}
       />
     </div>
   );

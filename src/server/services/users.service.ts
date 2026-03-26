@@ -54,3 +54,38 @@ export async function updateUser(id: string, updates: ProfileUpdate) {
 export async function toggleUserActive(id: string, is_active: boolean) {
   return updateUser(id, { is_active });
 }
+
+export async function deleteUser(id: string) {
+  const db = admin();
+
+  // Get profile to find auth_user_id
+  const { data: profile, error: fetchError } = await db
+    .from("profiles")
+    .select("auth_user_id")
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !profile) {
+    throw new Error("User not found");
+  }
+
+  // Delete profile first
+  const { error: profileError } = await db
+    .from("profiles")
+    .delete()
+    .eq("id", id);
+
+  if (profileError) {
+    throw new Error(`Failed to delete profile: ${profileError.message}`);
+  }
+
+  // Delete auth user
+  if (profile.auth_user_id) {
+    const { error: authError } = await db.auth.admin.deleteUser(profile.auth_user_id);
+    if (authError) {
+      throw new Error(`Profile deleted but auth user removal failed: ${authError.message}`);
+    }
+  }
+
+  return { success: true };
+}

@@ -57,6 +57,13 @@ export const toggleUserActiveFn = createServerFn({ method: "POST" })
     return usersService.toggleUserActive(data.id, data.is_active);
   });
 
+export const deleteUserFn = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    return usersService.deleteUser(data.id);
+  });
+
 export const resendInviteFn = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
