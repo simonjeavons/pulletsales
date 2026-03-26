@@ -79,8 +79,16 @@ function UsersPage() {
     },
     { key: "status", header: "Status", render: (u: Profile) => <StatusBadge active={u.is_active} /> },
     {
-      key: "invited", header: "Invited",
-      render: (u: Profile) => u.invited_at ? new Date(u.invited_at).toLocaleDateString() : "—",
+      key: "invite_status", header: "Invite",
+      render: (u: Profile) => {
+        if (u.last_login_at) {
+          return <Badge variant="success">Accepted</Badge>;
+        }
+        if (u.invited_at) {
+          return <Badge variant="warning">Pending</Badge>;
+        }
+        return <Badge variant="neutral">Not Invited</Badge>;
+      },
     },
     {
       key: "actions", header: "", className: "text-right",
