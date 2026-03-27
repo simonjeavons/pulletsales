@@ -23,7 +23,7 @@ function SetPasswordPage() {
 
     async function init() {
       try {
-        // Check for error in hash fragment (Supabase redirects with #error=...)
+        // Check for error in hash fragment
         const hash = window.location.hash;
         if (hash && hash.includes("error=")) {
           const hashParams = new URLSearchParams(hash.substring(1));
@@ -33,10 +33,32 @@ function SetPasswordPage() {
           return;
         }
 
-        // Check for PKCE code in query string (Supabase redirects with ?code=...)
+        // Check for OTP in query string (our direct approach)
         const params = new URLSearchParams(window.location.search);
-        const code = params.get("code");
+        const otp = params.get("otp");
+        const email = params.get("email");
+        const type = params.get("type");
 
+        if (otp && email) {
+          // For invite/magiclink, use "magiclink" type; for recovery use "recovery"
+          const otpType = type === "invite" ? "magiclink" : "recovery";
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            email,
+            token: otp,
+            type: otpType as any,
+          });
+          if (!verifyError) {
+            setSessionReady(true);
+            setInitializing(false);
+            return;
+          }
+          setError(verifyError.message);
+          setInitializing(false);
+          return;
+        }
+
+        // Check for PKCE code in query string
+        const code = params.get("code");
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (!exchangeError) {
@@ -44,13 +66,10 @@ function SetPasswordPage() {
             setInitializing(false);
             return;
           }
-          console.error("Code exchange failed:", exchangeError.message);
         }
 
-        // Check for hash fragment (implicit flow: #access_token=...)
-        const hash = window.location.hash;
+        // Check for hash fragment (implicit flow)
         if (hash && hash.includes("access_token")) {
-          // Supabase client auto-detects hash fragments
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             setSessionReady(true);
@@ -59,22 +78,12 @@ function SetPasswordPage() {
           }
         }
 
-        // Listen for auth state changes (handles delayed token exchange)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
-            setSessionReady(true);
-            setInitializing(false);
-          }
-        });
-
         // Check existing session
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           setSessionReady(true);
         }
         setInitializing(false);
-
-        return () => subscription.unsubscribe();
       } catch (err) {
         console.error("Auth init error:", err);
         setInitializing(false);
@@ -97,17 +106,10 @@ function SetPasswordPage() {
       return;
     }
 
-    if (!sessionReady) {
-      setError("Auth session not ready. Please try clicking the link in your email again.");
-      return;
-    }
-
     setLoading(true);
     try {
       const supabase = getSupabaseBrowserClient();
-      const { error: updateError } = await supabase.auth.updateUser({
-        password,
-      });
+      const { error: updateError } = await supabase.auth.updateUser({ password });
 
       if (updateError) {
         setError(updateError.message);
@@ -147,7 +149,7 @@ function SetPasswordPage() {
           ) : initializing ? (
             <div className="text-center py-8">
               <div className="animate-spin h-8 w-8 border-2 border-brand-500 border-t-transparent rounded-full mx-auto mb-4" />
-              <p className="text-sm text-gray-500">Setting up your session...</p>
+              <p className="text-sm text-gray-500">Verifying your link...</p>
             </div>
           ) : !sessionReady ? (
             <div className="text-center space-y-4">
@@ -164,38 +166,15 @@ function SetPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">
-                  {error}
-                </div>
+                <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">{error}</div>
               )}
-
               <FormField label="Password" required>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={inputClasses}
-                  placeholder="Minimum 8 characters"
-                  required
-                  minLength={8}
-                  autoFocus
-                />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClasses} placeholder="Minimum 8 characters" required minLength={8} autoFocus />
               </FormField>
-
               <FormField label="Confirm Password" required>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={inputClasses}
-                  placeholder="Re-enter your password"
-                  required
-                />
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClasses} placeholder="Re-enter your password" required />
               </FormField>
-
-              <Button type="submit" loading={loading} className="w-full">
-                Set password
-              </Button>
+              <Button type="submit" loading={loading} className="w-full">Set password</Button>
             </form>
           )}
         </div>

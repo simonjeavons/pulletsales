@@ -104,21 +104,19 @@ export async function requestPasswordReset(request: Request, email: string) {
     return { success: true };
   }
 
-  // Generate reset link without sending Supabase's email
+  // Generate OTP token for password reset
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "recovery",
     email,
-    options: {
-      redirectTo: `${APP_URL}/auth/reset-password`,
-    },
   });
 
   if (linkError) {
     return { error: linkError.message };
   }
 
-  // Use the action_link exactly as generated — do NOT modify it or the token becomes invalid
-  const resetUrl = linkData.properties?.action_link || (linkData as any).action_link || `${APP_URL}/auth/reset-password`;
+  // Build a direct link to our app with the OTP — bypasses Supabase's verify endpoint
+  const otp = (linkData as any).email_otp || linkData.properties?.email_otp;
+  const resetUrl = `${APP_URL}/auth/reset-password?otp=${otp}&email=${encodeURIComponent(email)}`;
 
   // Send via Resend using DB template
   await sendTemplatedAuthEmail({
@@ -194,21 +192,19 @@ export async function inviteUser(params: {
     return { error: profileError.message };
   }
 
-  // Generate a magic link for the user to set their password
+  // Generate OTP for the user to set their password
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: params.email,
-    options: {
-      redirectTo: `${APP_URL}/auth/set-password`,
-    },
   });
 
   if (linkError) {
     return { error: `User created but invite email failed: ${linkError.message}` };
   }
 
-  // Use the action_link exactly as generated — do NOT modify it or the token becomes invalid
-  const setPasswordUrl = linkData.properties?.action_link || (linkData as any).action_link || `${APP_URL}/auth/set-password`;
+  // Build a direct link to our app with the OTP — bypasses Supabase's verify endpoint
+  const otp = (linkData as any).email_otp || linkData.properties?.email_otp;
+  const setPasswordUrl = `${APP_URL}/auth/set-password?otp=${otp}&email=${encodeURIComponent(params.email)}&type=invite`;
 
   const emailResult = await sendInviteEmail({
     to: params.email,
@@ -239,21 +235,18 @@ export async function resendInvite(profileId: string) {
     return { error: "User not found" };
   }
 
-  // Generate a fresh magic link for the user to set their password
+  // Generate a fresh OTP for the user to set their password
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: profile.email,
-    options: {
-      redirectTo: `${APP_URL}/auth/set-password`,
-    },
   });
 
   if (linkError) {
     return { error: linkError.message };
   }
 
-  // Use the action_link exactly as generated — do NOT modify it or the token becomes invalid
-  const setPasswordUrl = linkData.properties?.action_link || (linkData as any).action_link || `${APP_URL}/auth/set-password`;
+  const otp = (linkData as any).email_otp || linkData.properties?.email_otp;
+  const setPasswordUrl = `${APP_URL}/auth/set-password?otp=${otp}&email=${encodeURIComponent(profile.email)}&type=invite`;
 
   const emailResult = await sendInviteEmail({
     to: profile.email,
