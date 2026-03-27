@@ -18,23 +18,59 @@ function ResetPasswordPage() {
   const [sessionReady, setSessionReady] = useState(false);
   const [initializing, setInitializing] = useState(true);
 
-  // On mount, detect the hash token from the reset link and exchange it for a session
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
 
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setSessionReady(true);
+    async function init() {
+      try {
+        // Check for PKCE code in query string (Supabase redirects with ?code=...)
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (!exchangeError) {
+            setSessionReady(true);
+            setInitializing(false);
+            return;
+          }
+          console.error("Code exchange failed:", exchangeError.message);
+        }
+
+        // Check for hash fragment (implicit flow: #access_token=...)
+        const hash = window.location.hash;
+        if (hash && hash.includes("access_token")) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            setSessionReady(true);
+            setInitializing(false);
+            return;
+          }
+        }
+
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
+            setSessionReady(true);
+            setInitializing(false);
+          }
+        });
+
+        // Check existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setSessionReady(true);
+        }
+        setInitializing(false);
+
+        return () => subscription.unsubscribe();
+      } catch (err) {
+        console.error("Auth init error:", err);
         setInitializing(false);
       }
-    });
+    }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSessionReady(true);
-      }
-      setInitializing(false);
-    });
+    init();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
