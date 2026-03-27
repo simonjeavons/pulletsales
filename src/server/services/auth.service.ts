@@ -176,10 +176,10 @@ export async function inviteUser(params: {
 }) {
   const admin = getSupabaseAdminClient();
 
-  // Create auth user WITHOUT sending Supabase's built-in email
+  // Create auth user with confirmed email (we handle invites ourselves via Resend)
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email: params.email,
-    email_confirm: false,
+    email_confirm: true,
     user_metadata: { full_name: params.full_name },
   });
 
@@ -203,9 +203,9 @@ export async function inviteUser(params: {
     return { error: profileError.message };
   }
 
-  // Generate an invite link via Supabase (doesn't send email)
+  // Generate a magic link for the user to set their password
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "invite",
+    type: "magiclink",
     email: params.email,
     options: {
       redirectTo: `${APP_URL}/auth/set-password`,
@@ -260,9 +260,9 @@ export async function resendInvite(profileId: string) {
     return { error: "User not found" };
   }
 
-  // Generate a fresh invite link
+  // Generate a fresh magic link for the user to set their password
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "invite",
+    type: "magiclink",
     email: profile.email,
     options: {
       redirectTo: `${APP_URL}/auth/set-password`,

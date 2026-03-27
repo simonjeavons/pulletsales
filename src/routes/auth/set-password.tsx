@@ -23,6 +23,16 @@ function SetPasswordPage() {
 
     async function init() {
       try {
+        // Check for error in hash fragment (Supabase redirects with #error=...)
+        const hash = window.location.hash;
+        if (hash && hash.includes("error=")) {
+          const hashParams = new URLSearchParams(hash.substring(1));
+          const errorDesc = hashParams.get("error_description") || hashParams.get("error") || "Link is invalid";
+          setError(decodeURIComponent(errorDesc.replace(/\+/g, " ")));
+          setInitializing(false);
+          return;
+        }
+
         // Check for PKCE code in query string (Supabase redirects with ?code=...)
         const params = new URLSearchParams(window.location.search);
         const code = params.get("code");
@@ -148,7 +158,7 @@ function SetPasswordPage() {
               </div>
               <h2 className="text-lg font-semibold text-gray-900">Link expired or invalid</h2>
               <p className="text-sm text-gray-600">
-                This invite link may have expired or already been used. Please ask your administrator to resend the invite.
+                {error || "This invite link may have expired or already been used. Please ask your administrator to resend the invite."}
               </p>
             </div>
           ) : (
