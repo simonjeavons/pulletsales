@@ -117,17 +117,8 @@ export async function requestPasswordReset(request: Request, email: string) {
     return { error: linkError.message };
   }
 
-  const rawResetLink = linkData.properties?.action_link || (linkData as any).action_link || "";
-  let resetUrl = `${APP_URL}/auth/reset-password`;
-  if (rawResetLink) {
-    try {
-      const url = new URL(rawResetLink);
-      url.searchParams.set("redirect_to", `${APP_URL}/auth/reset-password`);
-      resetUrl = url.toString();
-    } catch {
-      resetUrl = rawResetLink.replace(/redirect_to=[^&]*/, `redirect_to=${encodeURIComponent(`${APP_URL}/auth/reset-password`)}`);
-    }
-  }
+  // Use the action_link exactly as generated — do NOT modify it or the token becomes invalid
+  const resetUrl = linkData.properties?.action_link || (linkData as any).action_link || `${APP_URL}/auth/reset-password`;
 
   // Send via Resend using DB template
   await sendTemplatedAuthEmail({
@@ -216,20 +207,8 @@ export async function inviteUser(params: {
     return { error: `User created but invite email failed: ${linkError.message}` };
   }
 
-  // Extract action_link and force production redirect URL
-  const rawLink = linkData.properties?.action_link || (linkData as any).action_link || "";
-  let setPasswordUrl = `${APP_URL}/auth/set-password`;
-  if (rawLink) {
-    try {
-      const url = new URL(rawLink);
-      // Force the redirect_to parameter to our production URL
-      url.searchParams.set("redirect_to", `${APP_URL}/auth/set-password`);
-      setPasswordUrl = url.toString();
-    } catch {
-      // If URL parsing fails, just use the raw link with regex replacement
-      setPasswordUrl = rawLink.replace(/redirect_to=[^&]*/, `redirect_to=${encodeURIComponent(`${APP_URL}/auth/set-password`)}`);
-    }
-  }
+  // Use the action_link exactly as generated — do NOT modify it or the token becomes invalid
+  const setPasswordUrl = linkData.properties?.action_link || (linkData as any).action_link || `${APP_URL}/auth/set-password`;
 
   const emailResult = await sendInviteEmail({
     to: params.email,
@@ -273,17 +252,8 @@ export async function resendInvite(profileId: string) {
     return { error: linkError.message };
   }
 
-  const rawLink = linkData.properties?.action_link || (linkData as any).action_link || "";
-  let setPasswordUrl = `${APP_URL}/auth/set-password`;
-  if (rawLink) {
-    try {
-      const url = new URL(rawLink);
-      url.searchParams.set("redirect_to", `${APP_URL}/auth/set-password`);
-      setPasswordUrl = url.toString();
-    } catch {
-      setPasswordUrl = rawLink.replace(/redirect_to=[^&]*/, `redirect_to=${encodeURIComponent(`${APP_URL}/auth/set-password`)}`);
-    }
-  }
+  // Use the action_link exactly as generated — do NOT modify it or the token becomes invalid
+  const setPasswordUrl = linkData.properties?.action_link || (linkData as any).action_link || `${APP_URL}/auth/set-password`;
 
   const emailResult = await sendInviteEmail({
     to: profile.email,
