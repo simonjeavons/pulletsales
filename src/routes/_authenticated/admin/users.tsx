@@ -21,6 +21,7 @@ function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
+  const [createKey, setCreateKey] = useState(0);
   const [toggleTarget, setToggleTarget] = useState<Profile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
 
@@ -128,7 +129,7 @@ function UsersPage() {
       <PageHeader
         title="Users"
         description="Manage system users and their access."
-        actions={<Button onClick={() => setShowCreateModal(true)}>Add User</Button>}
+        actions={<Button onClick={() => { setCreateKey(k => k + 1); setShowCreateModal(true); }}>Add User</Button>}
       />
 
       <div className="flex gap-3 mb-4">
@@ -151,6 +152,7 @@ function UsersPage() {
 
       {/* Create Modal */}
       <UserFormModal
+        key={createKey}
         open={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSubmit={(values) => createMutation.mutate({ data: values })}
