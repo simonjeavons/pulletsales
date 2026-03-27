@@ -5,7 +5,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import appCss from "~/styles/app.css?url";
 
 const queryClient = new QueryClient({
@@ -36,6 +36,26 @@ export const Route = createRootRouteWithContext()({
 });
 
 function RootComponent() {
+  // Detect Supabase auth redirects with hash tokens and route to correct page
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (!hash || !hash.includes("access_token")) return;
+
+    const hashParams = new URLSearchParams(hash.substring(1));
+    const type = hashParams.get("type");
+    const currentPath = window.location.pathname;
+
+    // Only redirect if we're NOT already on the right auth page
+    if (type === "recovery" && currentPath !== "/auth/reset-password") {
+      window.location.href = `/auth/reset-password${hash}`;
+    } else if (type === "invite" && currentPath !== "/auth/set-password") {
+      window.location.href = `/auth/set-password${hash}`;
+    } else if (type === "magiclink" && currentPath !== "/auth/set-password") {
+      window.location.href = `/auth/set-password${hash}`;
+    }
+  }, []);
+
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
